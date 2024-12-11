@@ -279,9 +279,10 @@ class DataAnalyzer:
             }
         return outliers
 
+
     def perform_clustering(self, columns: List[str], n_clusters: int = 3) -> Dict:
         """
-        Perform K-means clustering
+        Perform K-means clustering with missing value handling
         
         Args:
             columns (List[str]): Columns to use for clustering
@@ -291,7 +292,16 @@ class DataAnalyzer:
             Dict with clustering results
         """
         # Prepare data
-        X = self.df[columns]
+        X = self.df[columns].copy()
+        
+        # Handle missing values
+        # Option 1: Simple imputation (replace NaNs with mean)
+        X.fillna(X.mean(), inplace=True)
+        
+        # Alternative Option 2: Drop rows with NaN values
+        # X.dropna(subset=columns, inplace=True)
+        
+        # Scale the data
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
         
@@ -299,12 +309,12 @@ class DataAnalyzer:
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
         cluster_labels = kmeans.fit_predict(X_scaled)
         
-        # Visualize clustering
+        # Visualize clustering (use first two columns)
         plt.figure(figsize=(10, 6))
         plt.scatter(X_scaled[:, 0], X_scaled[:, 1], c=cluster_labels, cmap='viridis')
         plt.title('Clustering Analysis')
         plt.xlabel(columns[0])
-        plt.ylabel(columns[1])
+        plt.ylabel(columns[1] if len(columns) > 1 else columns[0])
         plt.savefig(os.path.join(self.output_dir, 'clustering_analysis.png'))
         plt.close()
         
@@ -312,10 +322,11 @@ class DataAnalyzer:
             'cluster_centers': kmeans.cluster_centers_.tolist(),
             'inertia': kmeans.inertia_
         }
+    
 
     def perform_pca(self, columns: List[str]) -> Dict:
         """
-        Perform Principal Component Analysis
+        Perform Principal Component Analysis with missing value handling
         
         Args:
             columns (List[str]): Columns to use for PCA
@@ -323,7 +334,11 @@ class DataAnalyzer:
         Returns:
             Dict with PCA results
         """
-        X = self.df[columns]
+        X = self.df[columns].copy()
+        
+        # Handle missing values
+        X.fillna(X.mean(), inplace=True)
+        
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
         
@@ -333,7 +348,7 @@ class DataAnalyzer:
         # Visualize explained variance
         plt.figure(figsize=(10, 6))
         plt.plot(range(1, len(pca.explained_variance_ratio_) + 1), 
-                 pca.explained_variance_ratio_.cumsum(), 'bo-')
+                pca.explained_variance_ratio_.cumsum(), 'bo-')
         plt.title('Cumulative Explained Variance')
         plt.xlabel('Number of Components')
         plt.ylabel('Cumulative Explained Variance')
