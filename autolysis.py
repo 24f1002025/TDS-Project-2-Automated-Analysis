@@ -50,6 +50,9 @@ class DataAnalyzer:
         
         # Get API token securely
         self.api_token = self.get_api_token()
+        # Additional attributes for story generation
+        self.column_types = {col: str(dtype) for col, dtype in self.df.dtypes.items()}
+
 
     # All existing methods from the previous implementation remain the same:
     # - detect_encoding()
@@ -379,6 +382,54 @@ class DataAnalyzer:
         """
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
+    
+    def _format_data_coverage(self, coverage: Dict[str, float]) -> str:
+        """
+        Format data coverage information
+        
+        Args:
+            coverage (Dict): Data coverage dictionary
+        
+        Returns:
+            str: Formatted coverage information
+        """
+        coverage_lines = [
+            f"- **{col}**: {coverage*100:.2f}% covered" 
+            for col, coverage in coverage.items()
+        ]
+        return "\n".join(coverage_lines)
+    
+    def _format_column_types(self, column_types: Dict[str, str]) -> str:
+        """
+        Format column types
+        
+        Args:
+            column_types (Dict): Column type dictionary
+        
+        Returns:
+            str: Formatted column types
+        """
+        type_lines = [
+            f"- **{col}**: {dtype}" 
+            for col, dtype in column_types.items()
+        ]
+        return "\n".join(type_lines)
+    
+    def _format_unique_values(self, unique_values: Dict[str, int]) -> str:
+        """
+        Format unique values information
+        
+        Args:
+            unique_values (Dict): Unique values dictionary
+        
+        Returns:
+            str: Formatted unique values
+        """
+        unique_lines = [
+            f"- **{col}**: {count} unique values" 
+            for col, count in unique_values.items()
+        ]
+        return "\n".join(unique_lines)
 
     def analyze_images_with_llm(self, image_paths: List[ str]) -> str:
         """
@@ -423,6 +474,292 @@ class DataAnalyzer:
             return response.json()['choices'][0]['message']['content']
         except Exception as e:
             return f"Image analysis failed: {str(e)}"
+        
+
+    def _generate_dataset_profile(self) -> Dict[str, Any]:
+        """
+        Generate a comprehensive dataset profile
+        
+        Returns:
+            Dict with dataset characteristics
+        """
+        return {
+            'total_rows': len(self.df),
+            'total_columns': len(self.df.columns),
+            'column_types': self.column_types,
+            'missing_values': self.df.isnull().sum().to_dict(),
+            'unique_values': {col: self.df[col].nunique() for col in self.df.columns},
+            'data_coverage': {
+                col: 1 - (self.df[col].isnull().sum() / len(self.df)) 
+                for col in self.df.columns
+            }
+        }
+
+    def generate_story(self) -> str:
+        """
+        Generate an adaptive, context-aware narrative
+        
+        Returns:
+            str: Generated story narrative
+        """
+        # Prepare story generation prompt
+        story_prompt = self._prepare_story_prompt()
+        
+        # Query LLM for story generation
+        story = self._query_llm_for_story(story_prompt)
+        
+        return story
+
+    def _prepare_story_prompt(self) -> str:
+        """
+        Prepare a comprehensive prompt for story generation
+        
+        Returns:
+            str: Detailed storytelling prompt
+        """
+        # Analyze dataset characteristics
+        numeric_cols = self.df.select_dtypes(include=['number']).columns
+        categorical_cols = self.df.select_dtypes(include=['object']).columns
+        
+        # Prepare interesting statistical insights
+        insights = []
+        for col in numeric_cols:
+            mean = self.df[col].mean()
+            median = self.df[col].median()
+            std = self.df[col].std()
+            insights.append(f"{col}: Mean={mean:.2f}, Median={median:.2f}, Std Dev={std:.2f}")
+        
+        # Categorical column insights
+        cat_insights = []
+        for col in categorical_cols:
+            top_categories = self.df[col].value_counts().head(3)
+            cat_insights.append(f"{col} Top Categories: {dict(top_categories)}")
+        
+        # Construct comprehensive prompt
+        prompt = f"""
+        Storytelling Challenge: Transform Dataset into a Compelling Narrative
+
+        Dataset Overview:
+        - Total Rows: {len(self.df)}
+        - Total Columns: {len(self.df.columns)}
+        - Column Types: {json.dumps(self.column_types, indent=2)}
+
+        Numerical Insights:
+        {chr(10).join(insights)}
+
+        Categorical Insights:
+        {chr(10).join(cat_insights)}
+
+        Storytelling Objectives:
+        1. Create an engaging narrative that reveals the dataset's hidden stories
+        2. Use data points as narrative anchors
+        3. Maintain scientific integrity while being creatively compelling
+        4. Highlight unexpected patterns or interesting correlations
+        5. Make the data come alive through storytelling
+
+        Narrative Guidelines:
+        - Begin with an intriguing overview
+        - Use data as characters in the story
+        - Explain complex insights in an accessible manner
+        - Conclude with forward-looking implications
+        """
+        return prompt
+
+    def _query_llm_for_story(self, prompt: str) -> str:
+        """
+        Query LLM for story generation
+        
+        Args:
+            prompt (str): Storytelling prompt
+        
+        Returns:
+            str: Generated story
+        """
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {
+                    "role": "system", 
+                    "content": "You are a creative data storyteller. Transform data into an engaging narrative."
+                },
+                {
+                    "role": "user", 
+                    "content": prompt
+                }
+            ],
+            "max_tokens": 1500,
+            "temperature": 0.7
+        }
+        
+        try:
+            response = httpx.post(
+                "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions", 
+                json=data, 
+                headers=headers, 
+                timeout=30.0
+            )
+            response.raise_for_status()
+            return response.json()['choices'][0]['message']['content']
+        except Exception as e:
+            return f"""## 🚨 Story Generation Error
+
+    Unable to generate story:
+    - Error: {str(e)}
+
+    **Fallback Narrative**: 
+    This dataset holds untold stories waiting to be discovered. 
+    While our AI storyteller encountered a challenge, 
+    the data remains a treasure trove of insights."""
+
+    def generate_readme(self, narrative: str):
+        """
+        Generate a comprehensive and engaging README
+        
+        Args:
+            narrative (str): Generated narrative
+        """
+        readme_path = os.path.join(self.output_dir, 'README.md')
+        
+        # Determine dataset type and create a captivating title
+        dataset_name = os.path.basename(self.output_dir).replace('_analysis', '')
+        
+        # Generate dataset profile for additional context
+        dataset_profile = self._generate_dataset_profile()
+        
+        readme_content = f"""# 🔍 The Hidden Stories of {dataset_name.capitalize()} Data
+
+    ## 📖 Data Journey: Unveiling Insights
+
+    {narrative}
+
+    ## 📊 Dataset Snapshot
+
+    ### Overview
+    - **Total Observations**: {dataset_profile['total_rows']} data points
+    - **Exploratory Dimensions**: {dataset_profile['total_columns']} unique attributes
+
+    ### Data Coverage
+    {self._format_data_coverage(dataset_profile['data_coverage'])}
+
+    ### Column Types
+    {self._format_column_types(dataset_profile['column_types'])}
+
+    ### Unique Values
+    {self._format_unique_values(dataset_profile['unique_values'])}
+
+    ### Missing Data
+    {self._format_missing_data_summary(dataset_profile['missing_values'])}
+
+    **Prepared with ❤️ by DataStory Explorer**
+    """
+        
+        with open(readme_path, 'w', encoding='utf-8') as f:
+            f.write(readme_content)
+
+    def _format_missing_data_summary(self, missing_values: Dict[str, int]) -> str:
+        """
+        Generate a summary of missing data
+        
+        Args:
+            missing_values (Dict): Dictionary of missing values per column
+        
+        Returns:
+            str: Formatted missing data summary
+        """
+        missing_summary = "| Column | Missing Values | Percentage |\n|--------|----------------|------------|\n"
+        
+        for col, missing in missing_values.items():
+            percentage = (missing / len(self.df)) * 100
+            missing_summary += f"| {col} | {missing} | {percentage:.2f}% |\n"
+        
+        return missing_summary
+
+    def perform_correlation_analysis(self, columns: Optional[List[str]] = None) -> str:
+        """
+        Perform correlation analysis on specified columns
+        
+        Args:
+            columns (Optional[List[str]]): Columns to analyze correlations
+        
+        Returns:
+            str: Correlation analysis narrative
+        """
+        # If no columns specified, use all numeric columns
+        if columns is None:
+            columns = self.df.select_dtypes(include=['number']).columns
+        
+        # Compute correlation matrix
+        correlation_matrix = self.df[columns].corr()
+        
+        # Prepare correlation narrative
+        correlation_insights = []
+        for i in range(len(columns)):
+            for j in range(i+1, len(columns)):
+                col1, col2 = columns[i], columns[j]
+                correlation = correlation_matrix.loc[col1, col2]
+                
+                # Interpret correlation strength
+                if abs(correlation) > 0.7:
+                    strength = "strong"
+                elif abs(correlation) > 0.4:
+                    strength = "moderate"
+                else:
+                    strength = "weak"
+                # Determine correlation direction
+                direction = "positive" if correlation > 0 else "negative"
+                
+                correlation_insights.append(f"The correlation between {col1} and {col2} is {strength} ({direction}) with a value of {correlation:.2f}.")
+        
+        return "\n".join(correlation_insights)
+
+    def run_analysis(self):
+        """
+        Orchestrate the entire data analysis workflow with dynamic function calling
+        """
+        # Analyze data structure
+        data_insights = self.analyze_data_structure()
+        
+        # Generate visualizations
+        self.generate_visualizations()
+        
+        # Perform advanced analysis
+        advanced_insights = self.perform_advanced_analysis(data_insights)
+        
+        # Generate narrative from the dataset
+        narrative = self.generate_story()
+        
+        # Get image paths for analysis
+        image_paths = [
+            os.path.join(self.output_dir, 'numeric_distributions.png'),
+            os.path.join(self.output_dir, 'correlation_heatmap.png'),
+            os.path.join(self.output_dir, 'clustering_analysis.png'),
+            os.path.join(self.output_dir, 'pca_variance.png')
+        ]
+        
+        # Analyze images with LLM
+        image_analysis = self.analyze_images_with_llm(image_paths)
+        
+        # Combine narrative with image analysis
+        full_narrative = narrative + "\n\n## Image Analysis\n" + image_analysis
+        
+        # Generate README
+        self.generate_readme(full_narrative)
+        
+        # Ensure all values are JSON serializable
+        serializable_insights = {}
+        for key, value in advanced_insights.items():
+            try:
+                json.dumps(value)
+                serializable_insights[key] = value
+            except TypeError:
+                serializable_insights[key] = str(value)
+        
+        return {**data_insights, **serializable_insights}
 
     def query_llm_with_function_calling(self, analysis_details: Dict[str, Any]) -> str:
         """
@@ -526,8 +863,8 @@ class DataAnalyzer:
         # Perform advanced analysis
         advanced_insights = self.perform_advanced_analysis(data_insights)
         
-        # Query LLM for narrative with function calling
-        narrative = self.query_llm_with_function_calling(data_insights)
+        # Generate narrative from the dataset
+        narrative = self.generate_story()
         
         # Get image paths for analysis
         image_paths = [
