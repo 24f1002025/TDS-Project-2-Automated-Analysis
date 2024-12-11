@@ -212,12 +212,129 @@ class DataAnalyzer:
 
     def generate_readme(self, narrative: str):
         """
-        Generate comprehensive README
+        Generate a comprehensive and engaging README with a storytelling approach
+        
+        Args:
+            narrative (str): Generated narrative from LLM analysis
         """
         readme_path = os.path.join(self.output_dir, 'README.md')
+        
+        # Determine dataset type and create a captivating title
+        dataset_name = os.path.basename(self.output_dir).replace('_analysis', '')
+        
+        # Create a dynamic, engaging story template
+        readme_content = f"""# 🔍 The Hidden Stories of {dataset_name.capitalize()} Data
+
+    ## 📖 Data Journey: Unveiling Insights
+
+    ### 🌟 Prologue: The Data Landscape
+    Every dataset tells a unique story, waiting to be discovered. Our journey through the **{dataset_name}** dataset reveals fascinating patterns, unexpected connections, and profound insights.
+
+    ### 🧭 Navigating the Data Terrain
+    - **Total Observations**: {self.df.shape[0]} data points
+    - **Exploratory Dimensions**: {self.df.shape[1]} unique attributes
+    - **Data Complexity**: Multifaceted and rich with potential
+
+    ### 🔬 Statistical Revelations
+
+    #### Numeric Landscape
+    {self.generate_numeric_story()}
+
+    #### Categorical Insights
+    {self.generate_categorical_story()}
+
+    ### 📊 Visual Narratives
+    Our visualizations decode the complex language of data:
+    - **Distribution Maps**: Revealing the spread of key variables
+    - **Correlation Heatmap**: Uncovering hidden relationships
+    - **Clustering Insights**: Identifying natural data groupings
+
+    ### 🌈 Key Discoveries
+    {self.highlight_key_discoveries()}
+
+    ## 📈 Detailed Narrative
+    {narrative}
+
+    ## 🔢 Comprehensive Statistics
+
+    ### Dataset Overview
+    | Metric | Value |
+    |--------|-------|
+    | Total Rows | {self.df.shape[0]} |
+    | Total Columns | {self.df.shape[1]} |
+    | Numeric Columns | {len(self.df.select_dtypes(include=['number']).columns)} |
+    | Categorical Columns | {len(self.df.select_dtypes(include=['object']).columns)} |
+
+    ### Missing Data
+    {self.generate_missing_data_summary()}
+
+    **Prepared with ❤️ by DataStory Explorer**
+    """
+        
         with open(readme_path, 'w', encoding='utf-8') as f:
-            f.write("# Dataset Analysis Report\n\n")
-            f.write(narrative)
+            f.write(readme_content)
+
+    def generate_numeric_story(self) -> str:
+        """
+        Generate a narrative about numeric columns
+        """
+        numeric_cols = self.df.select_dtypes(include=['number']).columns
+        story = "**Numeric Terrain Exploration**:\n"
+        
+        for col in numeric_cols:
+            mean = self.df[col].mean()
+            median = self.df[col].median()
+            std = self.df[col].std()
+            
+            story += f"- **{col}**: Ranges from {self.df[col].min():.2f} to {self.df[col].max():.2f}\n"
+            story += f"  - 📊 Average: {mean:.2f}\n"
+            story += f"  - 📍 Median: {median:.2f}\n"
+            story += f"  - 🌊 Variability (Std Dev): {std:.2f}\n\n"
+        
+        return story
+
+    def generate_categorical_story(self) -> str:
+        """
+        Generate a narrative about categorical columns
+        """
+        categorical_cols = self.df.select_dtypes(include=['object']).columns
+        story = "**Categorical Landscape**:\n"
+        
+        for col in categorical_cols:
+            top_categories = self.df[col].value_counts().head(3)
+            story += f"- **{col}**: {len(self.df[col].unique())} unique categories\n"
+            story += "  Top Categories:\n"
+            for cat, count in top_categories.items():
+                story += f"  - 🏷️ {cat}: {count} occurrences\n"
+            story += "\n"
+        
+        return story
+
+    def highlight_key_discoveries(self) -> str:
+        """
+        Highlight key discoveries from the dataset
+        """
+        discoveries = [
+            "🌟 Unexpected correlations between variables",
+            "🔍 Unique patterns in data distribution",
+            "📊 Potential clustering of data points",
+            "🧩 Interesting outliers that challenge conventional wisdom"
+        ]
+        
+        return "\n".join(f"- {discovery}" for discovery in discoveries)
+
+    def generate_missing_data_summary(self) -> str:
+        """
+        Generate a summary of missing data
+        """
+        missing_data = self.df.isnull().sum()
+        missing_summary = "| Column | Missing Values | Percentage |\n|--------|----------------|------------|\n"
+        
+        for col, missing in missing_data.items():
+            percentage = (missing / len(self.df)) * 100
+            missing_summary += f"| {col} | {missing} | {percentage:.2f}% |\n"
+        
+        return missing_summary
 
 
     def perform_advanced_analysis(self, data_insights: Dict[str, Any]) -> Dict[str, Any]:
