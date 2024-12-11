@@ -281,37 +281,91 @@ class DataAnalyzer:
 
     def perform_clustering(self, columns: List[str], n_clusters: int = 3) -> Dict:
         """
-        Perform K-means clustering
-        
-        Args:
-            columns (List[str]): Columns to use for clustering
-            n_clusters (int): Number of clusters
-        
-        Returns:
-            Dict with clustering results
+        Perform K-means clustering with multiple missing value handling strategies
         """
         # Prepare data
-        X = self.df[columns]
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        X = self.df[columns].copy()
         
-        # Perform clustering
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-        cluster_labels = kmeans.fit_predict(X_scaled)
+        # Missing value handling strategies
+        strategies = [
+            # 1. Drop rows with missing values
+            lambda df: df.dropna(),
+            
+            # 2. Impute with mean
+            lambda df: df.fillna(df.mean()),
+            
+            # 3. Impute with median
+            lambda df: df.fillna(df.median())
+        ]
         
-        # Visualize clustering
-        plt.figure(figsize=(10, 6))
-        plt.scatter(X_scaled[:, 0], X_scaled[:, 1], c=cluster_labels, cmap='viridis')
-        plt.title('Clustering Analysis')
-        plt.xlabel(columns[0])
-        plt.ylabel(columns[1])
-        plt.savefig(os.path.join(self.output_dir, 'clustering_analysis.png'))
-        plt.close()
+        for strategy in strategies:
+            try:
+                # Apply strategy
+                X_processed = strategy(X)
+                
+                # Validate data
+                if len(X_processed) < n_clusters:
+                    continue
+                
+                # Scale the data
+                scaler = StandardScaler()
+                X_scaled = scaler.fit_transform(X_processed)
+                
+                # Perform clustering
+                kmeans = KMeans(
+                    n_clusters=min(n_clusters, len(X_processed)), 
+                    random_state=42
+                )
+                cluster_labels = kmeans.fit_predict(X_scaled)
+                
+                # Visualize clustering
+                plt.figure(figsize=(10, 6))
+                plt.scatter(X_scaled[:, 0], X_scaled[:, 1], c=cluster_labels, cmap='viridis')
+                plt.title(f'Clustering Analysis (Strategy: {strategy.__name__})')
+                plt.xlabel(columns[0])
+                plt.ylabel(columns[1])
+                plt.savefig(os.path.join(self.output_dir, 'clustering_analysis.png'))
+                plt.close()
+                
+                return {
+                    'cluster_centers': kmeans.cluster_centers_.tolist(),
+                    'inertia': kmeans.inertia_,
+                    'strategy_used': strategy.__name__
+                }
+            except Exception as e:
+                print(f"Clustering strategy failed: {e}")
         
+        # If all strategies fail
         return {
-            'cluster_centers': kmeans.cluster_centers_.tolist(),
-            'inertia': kmeans.inertia_
+            'cluster_centers': [],
+            'inertia': None,
+            'error': 'Unable to perform clustering with available data'
         }
+
+def perform_advanced_analysis(self, data_insights: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Perform advanced statistical and machine learning analyses
+    """
+    advanced_insights = {}
+    numeric_cols = data_insights['numeric_columns']
+    
+    if len(numeric_cols) > 1:
+        # Outlier Detection
+        advanced_insights['outliers'] = self.detect_outliers(numeric_cols)
+        
+        # Clustering Analysis
+        clustering_result = self.perform_clustering(numeric_cols)
+        if 'error' not in clustering_result:
+            advanced_insights['clustering'] = clustering_result
+        
+        # Dimensionality Reduction
+        advanced_insights['pca'] = self.perform_pca(numeric_cols)
+        
+        # Time Series Analysis (if applicable)
+        if self.is_time_series_data(numeric_cols):
+            advanced_insights['time_series'] = self.perform_time_series_analysis()
+    
+    return advanced_insights
 
     def perform_pca(self, columns: List[str]) -> Dict:
         """
