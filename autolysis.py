@@ -457,50 +457,62 @@ class DataAnalyzer:
         ]
         return "\n".join(unique_lines)
 
-    def analyze_images_with_llm(self, image_paths: List[ str]) -> str:
+    def analyze_images_with_llm(self, image_paths: List[str]) -> str:
         """
         Analyze generated images using LLM vision
-        
-        Args:
-            image_paths (List[str]): Paths to image files
-        
-        Returns:
-            str: LLM's image analysis
         """
-        headers = {
-            "Authorization": f"Bearer {self.api_token}",
-            "Content-Type": "application/json"
-        }
-        url = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
-        
-        # Prepare multi-modal content
-        content = [
-            {"type": "text", "text": "Analyze these visualizations and provide insights:"},
-            *[
-                {
-                    "type": "image_url", 
-                    "image_url": {
-                        "url": f"data:image/png;base64,{self.encode_image(path)}", 
-                        "detail": "low"
-                    }
-                } 
-                for path in image_paths
-            ]
-        ]
-        
-        data = {
-            "model": "gpt-4o-mini",
-            "messages": [{"role": "user", "content": content}],
-            "max_tokens": 1500
-        }
-        
         try:
+            headers = {
+                "Authorization": f"Bearer {self.api_token}",
+                "Content-Type": "application/json"
+            }
+            url = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+            
+            # Prepare multi-modal content
+            content = [
+                {"type": "text", "text": "Analyze these visualizations and provide insights:"},
+                *[
+                    {
+                        "type": "image_url", 
+                        "image_url": {
+                            "url": f"data:image/png;base64,{self.encode_image(path)}", 
+                            "detail": "low"
+                        }
+                    } 
+                    for path in image_paths if os.path.exists(path)
+                ]
+            ]
+            
+            data = {
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": content}],
+                "max_tokens": 1500
+            }
+            
             response = httpx.post(url, json=data, headers=headers, timeout=30.0)
             response.raise_for_status()
-            return response.json()['choices'][0]['message']['content']
+            response_data = response.json()
+            
+            # Add defensive checking for response structure
+            if not isinstance(response_data, dict):
+                return "Error: Invalid response format from API"
+            
+            choices = response_data.get('choices', [])
+            if not choices:
+                return "No analysis generated from the API"
+            
+            message = choices[0].get('message', {})
+            if not message:
+                return "No message content in API response"
+            
+            content = message.get('content', '')
+            if not content:
+                return "No content in API message"
+            
+            return content
+            
         except Exception as e:
-            return f"Image analysis failed: {str(e)}"
-        
+            return f"Image analysis encountered an error: {str(e)}\n\nProceeding with basic analysis."
 
     def _generate_dataset_profile(self) -> Dict[str, Any]:
         """
@@ -593,36 +605,30 @@ class DataAnalyzer:
 
     def _query_llm_for_story(self, prompt: str) -> str:
         """
-        Query LLM for story generation
-        
-        Args:
-            prompt (str): Storytelling prompt
-        
-        Returns:
-            str: Generated story
+        Query LLM for story generation with improved error handling
         """
-        headers = {
-            "Authorization": f"Bearer {self.api_token}",
-            "Content-Type": "application/json"
-        }
-        
-        data = {
-            "model": "gpt-4o-mini",
-            "messages": [
-                {
-                    "role": "system", 
-                    "content": "You are a creative data storyteller. Transform data into an engaging narrative."
-                },
-                {
-                    "role": "user", 
-                    "content": prompt
-                }
-            ],
-            "max_tokens": 1500,
-            "temperature": 0.7
-        }
-        
         try:
+            headers = {
+                "Authorization": f"Bearer {self.api_token}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "system", 
+                        "content": "You are a creative data storyteller. Transform data into an engaging narrative."
+                    },
+                    {
+                        "role": "user", 
+                        "content": prompt
+                    }
+                ],
+                "max_tokens": 1500,
+                "temperature": 0.7
+            }
+            
             response = httpx.post(
                 "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions", 
                 json=data, 
@@ -630,17 +636,33 @@ class DataAnalyzer:
                 timeout=30.0
             )
             response.raise_for_status()
-            return response.json()['choices'][0]['message']['content']
+            response_data = response.json()
+            
+            # Add defensive checking for response structure
+            if not isinstance(response_data, dict):
+                return "Error: Invalid response format from API"
+            
+            choices = response_data.get('choices', [])
+            if not choices:
+                return "No story generated from the API"
+            
+            message = choices[0].get('message', {})
+            if not message:
+                return "No message content in API response"
+            
+            content = message.get('content', '')
+            if not content:
+                return "No content in API message"
+            
+            return content
+            
         except Exception as e:
             return f"""## 🚨 Story Generation Error
 
-    Unable to generate story:
-    - Error: {str(e)}
+Unable to generate story due to technical issues.
+Proceeding with basic analysis.
 
-    **Fallback Narrative**: 
-    This dataset holds untold stories waiting to be discovered. 
-    While our AI storyteller encountered a challenge, 
-    the data remains a treasure trove of insights."""
+Error details: {str(e)}"""
 
     def generate_readme(self, narrative: str):
         """
