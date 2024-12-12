@@ -19,6 +19,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import httpx
 from typing import Dict, Any, List, Optional
+import numpy as np
+import glob
+from datetime import datetime
+import logging
 
 # Advanced analysis imports
 from sklearn.preprocessing import StandardScaler
@@ -27,12 +31,36 @@ from sklearn.decomposition import PCA
 import statsmodels.api as sm
 
 class DataAnalyzer:
+    """
+    A comprehensive data analysis tool that processes CSV files and generates insights.
+    
+    The class is organized into the following sections:
+    1. Initialization and Setup
+    2. Data Loading and Preprocessing
+    3. Basic Analysis Methods
+    4. Advanced Analysis Methods
+    5. Visualization Methods
+    6. Reporting Methods
+    7. LLM Integration Methods
+    8. Utility Methods
+
+    Attributes:
+        df (pd.DataFrame): The loaded dataset
+        output_dir (str): Directory for analysis outputs
+        api_token (str): Token for API authentication
+        column_types (Dict): Mapping of columns to their data types
+    """
+
     def __init__(self, file_path: str):
         """
         Initialize the data analyzer with a CSV file
         
         Args:
             file_path (str): Path to the CSV file
+        
+        Raises:
+            FileNotFoundError: If the specified file doesn't exist
+            ValueError: If the file is not a CSV or API token is invalid
         """
         # Validate input file
         if not os.path.exists(file_path):
@@ -50,6 +78,7 @@ class DataAnalyzer:
         
         # Get API token securely
         self.api_token = self.get_api_token()
+        
         # Additional attributes for story generation
         self.column_types = {col: str(dtype) for col, dtype in self.df.dtypes.items()}
 
@@ -151,7 +180,14 @@ class DataAnalyzer:
         Perform comprehensive data structure analysis
         
         Returns:
-            Dict containing data insights
+            Dict containing data insights including:
+            - total_rows: Number of rows in dataset
+            - total_columns: Number of columns
+            - column_types: Data type of each column
+            - missing_values: Count of missing values per column
+            - numeric_columns: List of numeric column names
+            - categorical_columns: List of categorical column names
+            - basic_stats: Basic statistics for numeric columns
         """
         # Basic statistics
         numeric_cols = self.df.select_dtypes(include=['number']).columns
@@ -183,14 +219,36 @@ class DataAnalyzer:
     def generate_visualizations(self):
         """
         Create multiple visualizations with error handling
+        
+        Generates:
+            - Distribution plots for numeric columns
+            - Correlation heatmap for numeric columns
+            - Missing value heatmap
+            - Categorical value counts plots
         """
         plt.close('all')  # Ensure all previous plots are closed
         
-        # Numeric columns visualization
+        try:
+            # Numeric columns visualization
+            self._generate_numeric_distributions()
+            
+            # Correlation heatmap
+            self._generate_correlation_heatmap()
+            
+            # Missing values heatmap
+            self._generate_missing_values_heatmap()
+            
+            # Categorical plots
+            self._generate_categorical_plots()
+            
+        except Exception as e:
+            print(f"❌ Error generating visualizations: {str(e)}")
+
+    def _generate_numeric_distributions(self):
+        """Generate distribution plots for numeric columns"""
         numeric_cols = self.df.select_dtypes(include=['number']).columns
         
         if len(numeric_cols) > 0:
-            # Distribution plots
             plt.figure(figsize=(15, 5 * ((len(numeric_cols) + 2) // 3)))
             for i, col in enumerate(numeric_cols, 1):
                 plt.subplot((len(numeric_cols) + 2) // 3, 3, i)
@@ -201,17 +259,70 @@ class DataAnalyzer:
             plt.tight_layout()
             plt.savefig(os.path.join(self.output_dir, 'numeric_distributions.png'))
             plt.close()
-            
-            # Correlation heatmap
-            if len(numeric_cols) > 1:
-                plt.figure(figsize=(10, 8))
-                correlation_matrix = self.df[numeric_cols].corr()
-                sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', 
-                            linewidths=0.5, center=0, vmin=-1, vmax=1)
-                plt.title('Correlation Matrix')
-                plt.tight_layout()
-                plt.savefig(os.path.join(self.output_dir, 'correlation_heatmap.png'))
-                plt.close()
+
+    def _generate_correlation_heatmap(self):
+        """Generate correlation heatmap for numeric columns"""
+        numeric_cols = self.df.select_dtypes(include=['number']).columns
+        
+        if len(numeric_cols) > 1:
+            plt.figure(figsize=(10, 8))
+            correlation_matrix = self.df[numeric_cols].corr()
+            sns.heatmap(correlation_matrix, 
+                       annot=True, 
+                       cmap='coolwarm', 
+                       linewidths=0.5, 
+                       center=0, 
+                       vmin=-1, 
+                       vmax=1)
+            plt.title('Correlation Matrix')
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.output_dir, 'correlation_heatmap.png'))
+            plt.close()
+
+    def _generate_missing_values_heatmap(self):
+        """Generate missing values heatmap"""
+        plt.figure(figsize=(10, 6))
+        sns.heatmap(self.df.isnull(), 
+                   yticklabels=False, 
+                   cmap='viridis', 
+                   cbar_kws={'label': 'Missing Values'})
+        plt.title('Missing Values Heatmap')
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.output_dir, 'missing_values_heatmap.png'))
+        plt.close()
+
+    def _generate_categorical_plots(self):
+        """Generate plots for categorical columns"""
+        categorical_cols = self.df.select_dtypes(include=['object']).columns
+        
+        if len(categorical_cols) > 0:
+            plt.figure(figsize=(15, 5 * ((len(categorical_cols) + 2) // 3)))
+            for i, col in enumerate(categorical_cols, 1):
+                plt.subplot((len(categorical_cols) + 2) // 3, 3, i)
+                value_counts = self.df[col].value_counts()
+                if len(value_counts) > 10:
+                    # Show only top 10 categories if there are too many
+                    value_counts = value_counts.head(10)
+                sns.barplot(x=value_counts.index, y=value_counts.values)
+                plt.title(f'Value Counts for {col}')
+                plt.xticks(rotation=45, ha='right')
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.output_dir, 'categorical_plots.png'))
+            plt.close()
+
+    def save_plot(self, fig, filename: str):
+        """
+        Safely save a matplotlib figure
+        
+        Args:
+            fig: matplotlib figure object
+            filename (str): Name of the file to save
+        """
+        try:
+            fig.savefig(os.path.join(self.output_dir, filename))
+            plt.close(fig)
+        except Exception as e:
+            print(f"❌ Error saving plot {filename}: {str(e)}")
 
     def generate_readme(self, narrative: str):
         """
@@ -223,6 +334,7 @@ class DataAnalyzer:
             f.write(narrative)
 
 
+    # SECTION 3: Advanced Analysis Methods
     def perform_advanced_analysis(self, data_insights: Dict[str, Any]) -> Dict[str, Any]:
         """
         Perform advanced statistical and machine learning analyses
@@ -231,7 +343,11 @@ class DataAnalyzer:
             data_insights (Dict): Insights from initial data analysis
         
         Returns:
-            Dict containing advanced analysis results
+            Dict containing advanced analysis results including:
+            - outliers: Outlier detection results
+            - clustering: K-means clustering results
+            - pca: Principal Component Analysis results
+            - time_series: Time series analysis (if applicable)
         """
         advanced_insights = {}
         numeric_cols = data_insights['numeric_columns']
@@ -260,7 +376,11 @@ class DataAnalyzer:
             columns (List[str]): Numeric columns to analyze
         
         Returns:
-            Dict of outlier information
+            Dict containing outlier information for each column:
+            - count: Number of outliers
+            - percentage: Percentage of outliers
+            - lower_bound: Lower threshold for outliers
+            - upper_bound: Upper threshold for outliers
         """
         outliers = {}
         for col in columns:
@@ -279,27 +399,22 @@ class DataAnalyzer:
             }
         return outliers
 
-
     def perform_clustering(self, columns: List[str], n_clusters: int = 3) -> Dict:
         """
         Perform K-means clustering with missing value handling
         
         Args:
             columns (List[str]): Columns to use for clustering
-            n_clusters (int): Number of clusters
+            n_clusters (int): Number of clusters to form
         
         Returns:
-            Dict with clustering results
+            Dict containing clustering results:
+            - cluster_centers: Coordinates of cluster centers
+            - inertia: Sum of squared distances to closest cluster center
         """
         # Prepare data
         X = self.df[columns].copy()
-        
-        # Handle missing values
-        # Option 1: Simple imputation (replace NaNs with mean)
         X.fillna(X.mean(), inplace=True)
-        
-        # Alternative Option 2: Drop rows with NaN values
-        # X.dropna(subset=columns, inplace=True)
         
         # Scale the data
         scaler = StandardScaler()
@@ -309,7 +424,7 @@ class DataAnalyzer:
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
         cluster_labels = kmeans.fit_predict(X_scaled)
         
-        # Visualize clustering (use first two columns)
+        # Visualize clustering
         plt.figure(figsize=(10, 6))
         plt.scatter(X_scaled[:, 0], X_scaled[:, 1], c=cluster_labels, cmap='viridis')
         plt.title('Clustering Analysis')
@@ -320,9 +435,8 @@ class DataAnalyzer:
         
         return {
             'cluster_centers': kmeans.cluster_centers_.tolist(),
-            'inertia': kmeans.inertia_
+            'inertia': float(kmeans.inertia_)
         }
-    
 
     def perform_pca(self, columns: List[str]) -> Dict:
         """
@@ -332,11 +446,11 @@ class DataAnalyzer:
             columns (List[str]): Columns to use for PCA
         
         Returns:
-            Dict with PCA results
+            Dict containing PCA results:
+            - explained_variance_ratio: Proportion of variance explained by each component
+            - cumulative_variance: Cumulative proportion of variance explained
         """
         X = self.df[columns].copy()
-        
-        # Handle missing values
         X.fillna(X.mean(), inplace=True)
         
         scaler = StandardScaler()
@@ -370,7 +484,6 @@ class DataAnalyzer:
         Returns:
             bool: Whether the data appears to be time series
         """
-        # Simple heuristics to detect time series
         return any('date' in col.lower() or 'time' in col.lower() for col in columns)
 
     def perform_time_series_analysis(self) -> Dict:
@@ -395,18 +508,23 @@ class DataAnalyzer:
         Returns:
             str: Base64 encoded image
         """
-        with open(image_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
+        try:
+            with open(image_path, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode('utf-8')
+        except Exception as e:
+            print(f"Error encoding image {image_path}: {str(e)}")
+            return ""
     
     def _format_data_coverage(self, coverage: Dict[str, float]) -> str:
         """
         Format data coverage information
         
         Args:
-            coverage (Dict): Data coverage dictionary
+            coverage (Dict): Data coverage dictionary with column names as keys
+                           and coverage percentages as values
         
         Returns:
-            str: Formatted coverage information
+            str: Formatted coverage information in markdown bullet points
         """
         coverage_lines = [
             f"- **{col}**: {coverage*100:.2f}% covered" 
@@ -416,13 +534,14 @@ class DataAnalyzer:
     
     def _format_column_types(self, column_types: Dict[str, str]) -> str:
         """
-        Format column types
+        Format column types for README
         
         Args:
-            column_types (Dict): Column type dictionary
+            column_types (Dict): Column type dictionary with column names as keys
+                               and data types as values
         
         Returns:
-            str: Formatted column types
+            str: Formatted column types in markdown bullet points
         """
         type_lines = [
             f"- **{col}**: {dtype}" 
@@ -435,10 +554,11 @@ class DataAnalyzer:
         Format unique values information
         
         Args:
-            unique_values (Dict): Unique values dictionary
+            unique_values (Dict): Dictionary containing count of unique values
+                                for each column
         
         Returns:
-            str: Formatted unique values
+            str: Formatted unique values in markdown bullet points
         """
         unique_lines = [
             f"- **{col}**: {count} unique values" 
@@ -446,7 +566,7 @@ class DataAnalyzer:
         ]
         return "\n".join(unique_lines)
 
-    def analyze_images_with_llm(self, image_paths: List[ str]) -> str:
+    def analyze_images_with_llm(self, image_paths: List[str]) -> str:
         """
         Analyze generated images using LLM vision
         
@@ -489,33 +609,151 @@ class DataAnalyzer:
             return response.json()['choices'][0]['message']['content']
         except Exception as e:
             return f"Image analysis failed: {str(e)}"
-        
 
-    def _generate_dataset_profile(self) -> Dict[str, Any]:
+    def query_llm_with_function_calling(self, analysis_details: Dict[str, Any]) -> str:
         """
-        Generate a comprehensive dataset profile
+        Enhanced LLM query with function calling capabilities
+        
+        Args:
+            analysis_details (Dict): Analyzed data details
         
         Returns:
-            Dict with dataset characteristics
+            str: LLM generated narrative or function call result
         """
-        return {
-            'total_rows': len(self.df),
-            'total_columns': len(self.df.columns),
-            'column_types': self.column_types,
-            'missing_values': self.df.isnull().sum().to_dict(),
-            'unique_values': {col: self.df[col].nunique() for col in self.df.columns},
-            'data_coverage': {
-                col: 1 - (self.df[col].isnull().sum() / len(self.df)) 
-                for col in self.df.columns
-            }
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json"
         }
+        url = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+        
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {"role": "user", "content": json.dumps(analysis_details)},
+                {"role": "system", "content": "Suggest appropriate analysis functions based on the dataset."}
+            ],
+            "functions": self.get_analysis_functions(),
+            "function_call": "auto",
+            "max_tokens": 1000
+        }
+        
+        try:
+            response = httpx.post(url, json=data, headers=headers, timeout=30.0)
+            response.raise_for_status()
+            
+            # Extract function call and generate narrative
+            response_data = response.json()
+            function_call = response_data.get('choices', [{}])[0].get('function_call', {})
+            
+            if function_call:
+                # Process function suggestion
+                suggested_function = function_call.get('name', '')
+                suggested_params = json.loads(function_call.get('arguments', '{}'))
+                
+                # Call the suggested function with parameters
+                if hasattr(self, suggested_function):
+                    return getattr(self, suggested_function)(**suggested_params)
+            
+            return response_data['choices'][0]['message']['content']
+        except Exception as e:
+            return f"Function calling failed: {str(e)}"
+
+    def get_analysis_functions(self) -> List[Dict]:
+        """
+        Define available analysis functions for LLM
+        
+        Returns:
+            List of function definitions with parameters
+        """
+        return [
+            {
+                "name": "perform_correlation_analysis",
+                "description": "Analyze correlations between numeric columns",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "columns": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Numeric columns to analyze correlations"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "detect_outliers",
+                "description": "Identify outliers in numeric columns",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "method": {
+                            "type": "string",
+                            "enum": ["IQR", "Z-Score", "Modified Z-Score"],
+                            "description": "Outlier detection method"
+                        }
+                    }
+                }
+            }
+        ]
+
+    def run_analysis(self):
+        """
+        Orchestrate the entire data analysis workflow with dynamic function calling
+        
+        Returns:
+            Dict containing all analysis results and insights
+        """
+        try:
+            # Step 1: Analyze data structure
+            self._log_progress("Analyzing data structure...")
+            data_insights = self.analyze_data_structure()
+            
+            # Step 2: Generate visualizations
+            self._log_progress("Generating visualizations...")
+            self.generate_visualizations()
+            
+            # Step 3: Perform advanced analysis
+            self._log_progress("Performing advanced analysis...")
+            advanced_insights = self.perform_advanced_analysis(data_insights)
+            
+            # Step 4: Generate narrative
+            self._log_progress("Generating narrative...")
+            narrative = self.generate_story()
+            
+            # Step 5: Analyze generated images
+            self._log_progress("Analyzing visualizations...")
+            image_paths = [
+                os.path.join(self.output_dir, 'numeric_distributions.png'),
+                os.path.join(self.output_dir, 'correlation_heatmap.png'),
+                os.path.join(self.output_dir, 'clustering_analysis.png'),
+                os.path.join(self.output_dir, 'pca_variance.png')
+            ]
+            image_analysis = self.analyze_images_with_llm(image_paths)
+            
+            # Step 6: Combine narrative with image analysis
+            full_narrative = f"{narrative}\n\n## Visual Analysis\n{image_analysis}"
+            
+            # Step 7: Generate README
+            self._log_progress("Generating README...")
+            self.generate_readme(full_narrative)
+            
+            # Ensure all values are JSON serializable
+            serializable_insights = self._make_json_serializable(advanced_insights)
+            
+            self._log_progress("Analysis completed successfully!")
+            return {**data_insights, **serializable_insights}
+            
+        except Exception as e:
+            self._log_progress(f"Error during analysis: {str(e)}", error=True)
+            raise
 
     def generate_story(self) -> str:
         """
         Generate an adaptive, context-aware narrative
         
         Returns:
-            str: Generated story narrative
+            str: Generated story narrative that describes the key insights 
+                 and patterns found in the dataset
         """
         # Prepare story generation prompt
         story_prompt = self._prepare_story_prompt()
@@ -530,7 +768,7 @@ class DataAnalyzer:
         Prepare a comprehensive prompt for story generation
         
         Returns:
-            str: Detailed storytelling prompt
+            str: Detailed storytelling prompt incorporating dataset characteristics
         """
         # Analyze dataset characteristics
         numeric_cols = self.df.select_dtypes(include=['number']).columns
@@ -699,7 +937,7 @@ class DataAnalyzer:
         Perform correlation analysis on specified columns
         
         Args:
-            columns (Optional[List[str]]): Columns to analyze correlations
+            columns: Optional list of column names to analyze. If None, uses all numeric columns.
         
         Returns:
             str: Correlation analysis narrative
@@ -733,182 +971,122 @@ class DataAnalyzer:
         
         return "\n".join(correlation_insights)
 
-    def run_analysis(self):
+    def _make_json_serializable(self, data: Dict) -> Dict:
         """
-        Orchestrate the entire data analysis workflow with dynamic function calling
-        """
-        # Analyze data structure
-        data_insights = self.analyze_data_structure()
-        
-        # Generate visualizations
-        self.generate_visualizations()
-        
-        # Perform advanced analysis
-        advanced_insights = self.perform_advanced_analysis(data_insights)
-        
-        # Generate narrative from the dataset
-        narrative = self.generate_story()
-        
-        # Get image paths for analysis
-        image_paths = [
-            os.path.join(self.output_dir, 'numeric_distributions.png'),
-            os.path.join(self.output_dir, 'correlation_heatmap.png'),
-            os.path.join(self.output_dir, 'clustering_analysis.png'),
-            os.path.join(self.output_dir, 'pca_variance.png')
-        ]
-        
-        # Analyze images with LLM
-        image_analysis = self.analyze_images_with_llm(image_paths)
-        
-        # Combine narrative with image analysis
-        full_narrative = narrative + "\n\n## Image Analysis\n" + image_analysis
-        
-        # Generate README
-        self.generate_readme(full_narrative)
-        
-        # Ensure all values are JSON serializable
-        serializable_insights = {}
-        for key, value in advanced_insights.items():
-            try:
-                json.dumps(value)
-                serializable_insights[key] = value
-            except TypeError:
-                serializable_insights[key] = str(value)
-        
-        return {**data_insights, **serializable_insights}
-
-    def query_llm_with_function_calling(self, analysis_details: Dict[str, Any]) -> str:
-        """
-        Enhanced LLM query with function calling
+        Convert all values in a dictionary to JSON serializable format
         
         Args:
-            analysis_details (Dict): Analyzed data details
+            data (Dict): Dictionary to convert
         
         Returns:
-            str: LLM generated narrative
+            Dict: Dictionary with all values converted to JSON serializable format
         """
-        headers = {
-            "Authorization": f"Bearer {self.api_token}",
-            "Content-Type": "application/json"
-        }
-        url = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+        serializable = {}
+        for key, value in data.items():
+            try:
+                json.dumps(value)  # Test if value is already serializable
+                serializable[key] = value
+            except (TypeError, OverflowError):
+                if isinstance(value, (np.integer, np.floating)):
+                    serializable[key] = float(value)
+                elif isinstance(value, np.ndarray):
+                    serializable[key] = value.tolist()
+                else:
+                    serializable[key] = str(value)
+        return serializable
+
+    def _validate_output_path(self, path: str) -> bool:
+        """
+        Validate and ensure output path exists
         
-        data = {
-            "model": "gpt-4o-mini",
-            "messages": [
-                {"role": "user", "content": json.dumps(analysis_details)},
-                {"role": "system", "content": "Suggest appropriate analysis functions based on the dataset."}
-            ],
-            "functions": self.get_analysis_functions(),
-            "function_call": "auto",
-            "max_tokens": 1000
-        }
+        Args:
+            path (str): Path to validate
         
+        Returns:
+            bool: True if path is valid and exists
+        
+        Raises:
+            OSError: If path creation fails
+        """
         try:
-            response = httpx.post(url, json=data, headers=headers, timeout=30.0)
-            response.raise_for_status()
-            
-            # Extract function call and generate narrative
-            response_data = response.json()
-            function_call = response_data.get('choices', [{}])[0].get('function_call', {})
-            
-            if function_call:
-                # Process function suggestion
-                suggested_function = function_call.get('name', '')
-                suggested_params = json.loads(function_call.get('arguments', '{}'))
-                
-                # Call the suggested function with parameters
-                if suggested_function == "perform_correlation_analysis":
-                    return self.perform_correlation_analysis(**suggested_params)
-                elif suggested_function == "detect_outliers":
-                    return self.detect_outliers(**suggested_params)
-            
-            return response_data['choices'][0]['message']['content']
+            os.makedirs(path, exist_ok=True)
+            return os.path.exists(path)
         except Exception as e:
-            return f"Function calling failed: {str(e)}"
+            print(f"❌ Error validating output path: {str(e)}")
+            return False
 
-    def get_analysis_functions(self) -> List[Dict]:
+    def _log_progress(self, message: str, error: bool = False):
         """
-        Dynamically generate function suggestions based on dataset
+        Log progress messages with timestamps
+        
+        Args:
+            message (str): Message to log
+            error (bool): Whether this is an error message
+        """
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        prefix = "❌" if error else "ℹ️"
+        print(f"{prefix} [{timestamp}] {message}")
+
+    def _cleanup_resources(self):
+        """
+        Clean up any temporary resources and files
+        
+        This method:
+        1. Closes all matplotlib figures
+        2. Removes temporary files
+        3. Cleans up any other resources
+        """
+        # Close all matplotlib figures
+        plt.close('all')
+        
+        # Clean up any temporary files
+        temp_files = glob.glob(os.path.join(self.output_dir, 'temp_*'))
+        for file in temp_files:
+            try:
+                os.remove(file)
+            except Exception as e:
+                print(f"Warning: Could not remove temporary file {file}: {str(e)}")
+        
+        # Additional cleanup if needed
+        try:
+            # Clear any cached data
+            if hasattr(self, '_cache'):
+                self._cache.clear()
+            
+            # Close any open file handles
+            for handler in logging.getLogger().handlers[:]:
+                handler.close()
+                
+        except Exception as e:
+            print(f"Warning: Error during cleanup: {str(e)}")
+
+    def _generate_dataset_profile(self) -> Dict[str, Any]:
+        """
+        Generate a comprehensive dataset profile
         
         Returns:
-            List of function suggestions
+            Dict with dataset characteristics including:
+            - total_rows: Number of rows
+            - total_columns: Number of columns
+            - column_types: Data types of each column
+            - missing_values: Count of missing values
+            - unique_values: Count of unique values
+            - data_coverage: Percentage of non-null values
         """
-        functions = [
-            {
-                "name": "perform_correlation_analysis",
-                "description": "Analyze correlations between numeric columns",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "columns": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": "Numeric columns to analyze correlations"
-                        }
-                    }
-                }
-            },
-            {
-                "name": "detect_outliers",
-                "description": "Identify outliers in numeric columns",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "method": {
-                            "type": "string",
-                            "enum": ["IQR", "Z-Score", "Modified Z-Score"],
-                            "description": "Outlier detection method"
-                        }
-                    }
-                }
+        profile = {
+            'total_rows': len(self.df),
+            'total_columns': len(self.df.columns),
+            'column_types': self.column_types,
+            'missing_values': self.df.isnull().sum().to_dict(),
+            'unique_values': {col: self.df[col].nunique() for col in self.df.columns},
+            'data_coverage': {
+                col: 1 - (self.df[col].isnull().sum() / len(self.df)) 
+                for col in self.df.columns
             }
-        ]
-        return functions
-
-    def run_analysis(self):
-        """
-        Orchestrate the entire data analysis workflow with dynamic function calling
-        """
-        # Analyze data structure
-        data_insights = self.analyze_data_structure()
-        
-        # Generate visualizations
-        self.generate_visualizations()
-        
-        # Perform advanced analysis
-        advanced_insights = self.perform_advanced_analysis(data_insights)
-        
-        # Generate narrative from the dataset
-        narrative = self.generate_story()
-        
-        # Get image paths for analysis
-        image_paths = [
-            os.path.join(self.output_dir, 'numeric_distributions.png'),
-            os.path.join(self.output_dir, 'correlation_heatmap.png'),
-            os.path.join(self.output_dir, 'clustering_analysis.png'),
-            os.path.join(self.output_dir, 'pca_variance.png')
-        ]
-        
-        # Analyze images with LLM
-        image_analysis = self.analyze_images_with_llm(image_paths)
-        
-        # Combine narrative with image analysis
-        full_narrative = narrative + "\n\n## Image Analysis\n" + image_analysis
-        
-        # Generate README
-        self.generate_readme(full_narrative)
+        }
         
         # Ensure all values are JSON serializable
-        serializable_insights = {}
-        for key, value in advanced_insights.items():
-            try:
-                json.dumps(value)
-                serializable_insights[key] = value
-            except TypeError:
-                serializable_insights[key] = str(value)
-        
-        return {**data_insights, **serializable_insights}
+        return self._make_json_serializable(profile)
 
 def main():
     if len(sys.argv) < 2:
@@ -937,6 +1115,6 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
-
+[]
 if __name__ == "__main__":
     main()
