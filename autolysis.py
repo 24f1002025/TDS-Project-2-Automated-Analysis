@@ -6,17 +6,6 @@
 #   "scikit-learn", "statsmodels"
 # ]
 # ///
-"""
-Data Analysis Script (autolysis.py)
-
-This script performs comprehensive data analysis, including visualization,
-statistical insights, and machine learning-based methods such as clustering and PCA.
-The code is modular and follows best practices for structure and organization.
-
-Requirements:
-- Python >= 3.11
-- Dependencies: pandas, matplotlib, seaborn, httpx, chardet, scikit-learn, statsmodels
-"""
 
 import os
 import sys
@@ -457,62 +446,50 @@ class DataAnalyzer:
         ]
         return "\n".join(unique_lines)
 
-    def analyze_images_with_llm(self, image_paths: List[str]) -> str:
+    def analyze_images_with_llm(self, image_paths: List[ str]) -> str:
         """
         Analyze generated images using LLM vision
+        
+        Args:
+            image_paths (List[str]): Paths to image files
+        
+        Returns:
+            str: LLM's image analysis
         """
-        try:
-            headers = {
-                "Authorization": f"Bearer {self.api_token}",
-                "Content-Type": "application/json"
-            }
-            url = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
-            
-            # Prepare multi-modal content
-            content = [
-                {"type": "text", "text": "Analyze these visualizations and provide insights:"},
-                *[
-                    {
-                        "type": "image_url", 
-                        "image_url": {
-                            "url": f"data:image/png;base64,{self.encode_image(path)}", 
-                            "detail": "low"
-                        }
-                    } 
-                    for path in image_paths if os.path.exists(path)
-                ]
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json"
+        }
+        url = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+        
+        # Prepare multi-modal content
+        content = [
+            {"type": "text", "text": "Analyze these visualizations and provide insights:"},
+            *[
+                {
+                    "type": "image_url", 
+                    "image_url": {
+                        "url": f"data:image/png;base64,{self.encode_image(path)}", 
+                        "detail": "low"
+                    }
+                } 
+                for path in image_paths
             ]
-            
-            data = {
-                "model": "gpt-4o-mini",
-                "messages": [{"role": "user", "content": content}],
-                "max_tokens": 1500
-            }
-            
+        ]
+        
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": content}],
+            "max_tokens": 1500
+        }
+        
+        try:
             response = httpx.post(url, json=data, headers=headers, timeout=30.0)
             response.raise_for_status()
-            response_data = response.json()
-            
-            # Add defensive checking for response structure
-            if not isinstance(response_data, dict):
-                return "Error: Invalid response format from API"
-            
-            choices = response_data.get('choices', [])
-            if not choices:
-                return "No analysis generated from the API"
-            
-            message = choices[0].get('message', {})
-            if not message:
-                return "No message content in API response"
-            
-            content = message.get('content', '')
-            if not content:
-                return "No content in API message"
-            
-            return content
-            
+            return response.json()['choices'][0]['message']['content']
         except Exception as e:
-            return f"Image analysis encountered an error: {str(e)}\n\nProceeding with basic analysis."
+            return f"Image analysis failed: {str(e)}"
+        
 
     def _generate_dataset_profile(self) -> Dict[str, Any]:
         """
@@ -605,30 +582,36 @@ class DataAnalyzer:
 
     def _query_llm_for_story(self, prompt: str) -> str:
         """
-        Query LLM for story generation with improved error handling
+        Query LLM for story generation
+        
+        Args:
+            prompt (str): Storytelling prompt
+        
+        Returns:
+            str: Generated story
         """
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {
+                    "role": "system", 
+                    "content": "You are a creative data storyteller. Transform data into an engaging narrative."
+                },
+                {
+                    "role": "user", 
+                    "content": prompt
+                }
+            ],
+            "max_tokens": 1500,
+            "temperature": 0.7
+        }
+        
         try:
-            headers = {
-                "Authorization": f"Bearer {self.api_token}",
-                "Content-Type": "application/json"
-            }
-            
-            data = {
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {
-                        "role": "system", 
-                        "content": "You are a creative data storyteller. Transform data into an engaging narrative."
-                    },
-                    {
-                        "role": "user", 
-                        "content": prompt
-                    }
-                ],
-                "max_tokens": 1500,
-                "temperature": 0.7
-            }
-            
             response = httpx.post(
                 "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions", 
                 json=data, 
@@ -636,33 +619,17 @@ class DataAnalyzer:
                 timeout=30.0
             )
             response.raise_for_status()
-            response_data = response.json()
-            
-            # Add defensive checking for response structure
-            if not isinstance(response_data, dict):
-                return "Error: Invalid response format from API"
-            
-            choices = response_data.get('choices', [])
-            if not choices:
-                return "No story generated from the API"
-            
-            message = choices[0].get('message', {})
-            if not message:
-                return "No message content in API response"
-            
-            content = message.get('content', '')
-            if not content:
-                return "No content in API message"
-            
-            return content
-            
+            return response.json()['choices'][0]['message']['content']
         except Exception as e:
             return f"""## 🚨 Story Generation Error
 
-Unable to generate story due to technical issues.
-Proceeding with basic analysis.
+    Unable to generate story:
+    - Error: {str(e)}
 
-Error details: {str(e)}"""
+    **Fallback Narrative**: 
+    This dataset holds untold stories waiting to be discovered. 
+    While our AI storyteller encountered a challenge, 
+    the data remains a treasure trove of insights."""
 
     def generate_readme(self, narrative: str):
         """
@@ -770,56 +737,45 @@ Error details: {str(e)}"""
         """
         Orchestrate the entire data analysis workflow with dynamic function calling
         """
-        try:
-            # Analyze data structure
-            data_insights = self.analyze_data_structure()
-            
-            # Generate visualizations
-            self.generate_visualizations()
-            
-            # Perform advanced analysis
-            advanced_insights = self.perform_advanced_analysis(data_insights)
-            
-            # Generate narrative from the dataset
-            narrative = self.generate_story()
-            
-            # Get image paths for analysis
-            image_paths = [
-                os.path.join(self.output_dir, 'numeric_distributions.png'),
-                os.path.join(self.output_dir, 'correlation_heatmap.png'),
-                os.path.join(self.output_dir, 'clustering_analysis.png'),
-                os.path.join(self.output_dir, 'pca_variance.png')
-            ]
-            
-            # Analyze images with LLM
-            image_analysis = self.analyze_images_with_llm(image_paths)
-            
-            # Combine narrative with image analysis
-            full_narrative = narrative + "\n\n## Image Analysis\n" + image_analysis
-            
-            # Generate README in both locations
-            self.generate_readme(full_narrative)
-            
-            # Also generate README in eval directory
-            eval_dir = os.path.join('eval', os.path.basename(self.output_dir))
-            os.makedirs(eval_dir, exist_ok=True)
-            eval_readme_path = os.path.join(eval_dir, 'README.md')
-            with open(eval_readme_path, 'w', encoding='utf-8') as f:
-                f.write(full_narrative)
-            
-            # Ensure all values are JSON serializable
-            serializable_insights = {}
-            for key, value in advanced_insights.items():
-                try:
-                    json.dumps(value)
-                    serializable_insights[key] = value
-                except TypeError:
-                    serializable_insights[key] = str(value)
-            
-            return {**data_insights, **serializable_insights}
-        except Exception as e:
-            print(f"Error in run_analysis: {str(e)}")
-            raise
+        # Analyze data structure
+        data_insights = self.analyze_data_structure()
+        
+        # Generate visualizations
+        self.generate_visualizations()
+        
+        # Perform advanced analysis
+        advanced_insights = self.perform_advanced_analysis(data_insights)
+        
+        # Generate narrative from the dataset
+        narrative = self.generate_story()
+        
+        # Get image paths for analysis
+        image_paths = [
+            os.path.join(self.output_dir, 'numeric_distributions.png'),
+            os.path.join(self.output_dir, 'correlation_heatmap.png'),
+            os.path.join(self.output_dir, 'clustering_analysis.png'),
+            os.path.join(self.output_dir, 'pca_variance.png')
+        ]
+        
+        # Analyze images with LLM
+        image_analysis = self.analyze_images_with_llm(image_paths)
+        
+        # Combine narrative with image analysis
+        full_narrative = narrative + "\n\n## Image Analysis\n" + image_analysis
+        
+        # Generate README
+        self.generate_readme(full_narrative)
+        
+        # Ensure all values are JSON serializable
+        serializable_insights = {}
+        for key, value in advanced_insights.items():
+            try:
+                json.dumps(value)
+                serializable_insights[key] = value
+            except TypeError:
+                serializable_insights[key] = str(value)
+        
+        return {**data_insights, **serializable_insights}
 
     def query_llm_with_function_calling(self, analysis_details: Dict[str, Any]) -> str:
         """
@@ -909,6 +865,50 @@ Error details: {str(e)}"""
             }
         ]
         return functions
+
+    def run_analysis(self):
+        """
+        Orchestrate the entire data analysis workflow with dynamic function calling
+        """
+        # Analyze data structure
+        data_insights = self.analyze_data_structure()
+        
+        # Generate visualizations
+        self.generate_visualizations()
+        
+        # Perform advanced analysis
+        advanced_insights = self.perform_advanced_analysis(data_insights)
+        
+        # Generate narrative from the dataset
+        narrative = self.generate_story()
+        
+        # Get image paths for analysis
+        image_paths = [
+            os.path.join(self.output_dir, 'numeric_distributions.png'),
+            os.path.join(self.output_dir, 'correlation_heatmap.png'),
+            os.path.join(self.output_dir, 'clustering_analysis.png'),
+            os.path.join(self.output_dir, 'pca_variance.png')
+        ]
+        
+        # Analyze images with LLM
+        image_analysis = self.analyze_images_with_llm(image_paths)
+        
+        # Combine narrative with image analysis
+        full_narrative = narrative + "\n\n## Image Analysis\n" + image_analysis
+        
+        # Generate README
+        self.generate_readme(full_narrative)
+        
+        # Ensure all values are JSON serializable
+        serializable_insights = {}
+        for key, value in advanced_insights.items():
+            try:
+                json.dumps(value)
+                serializable_insights[key] = value
+            except TypeError:
+                serializable_insights[key] = str(value)
+        
+        return {**data_insights, **serializable_insights}
 
 def main():
     if len(sys.argv) < 2:
