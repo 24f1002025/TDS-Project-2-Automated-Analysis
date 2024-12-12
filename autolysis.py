@@ -6,6 +6,17 @@
 #   "scikit-learn", "statsmodels"
 # ]
 # ///
+"""
+Data Analysis Script (autolysis.py)
+
+This script performs comprehensive data analysis, including visualization,
+statistical insights, and machine learning-based methods such as clustering and PCA.
+The code is modular and follows best practices for structure and organization.
+
+Requirements:
+- Python >= 3.11
+- Dependencies: pandas, matplotlib, seaborn, httpx, chardet, scikit-learn, statsmodels
+"""
 
 import os
 import sys
@@ -737,45 +748,56 @@ class DataAnalyzer:
         """
         Orchestrate the entire data analysis workflow with dynamic function calling
         """
-        # Analyze data structure
-        data_insights = self.analyze_data_structure()
-        
-        # Generate visualizations
-        self.generate_visualizations()
-        
-        # Perform advanced analysis
-        advanced_insights = self.perform_advanced_analysis(data_insights)
-        
-        # Generate narrative from the dataset
-        narrative = self.generate_story()
-        
-        # Get image paths for analysis
-        image_paths = [
-            os.path.join(self.output_dir, 'numeric_distributions.png'),
-            os.path.join(self.output_dir, 'correlation_heatmap.png'),
-            os.path.join(self.output_dir, 'clustering_analysis.png'),
-            os.path.join(self.output_dir, 'pca_variance.png')
-        ]
-        
-        # Analyze images with LLM
-        image_analysis = self.analyze_images_with_llm(image_paths)
-        
-        # Combine narrative with image analysis
-        full_narrative = narrative + "\n\n## Image Analysis\n" + image_analysis
-        
-        # Generate README
-        self.generate_readme(full_narrative)
-        
-        # Ensure all values are JSON serializable
-        serializable_insights = {}
-        for key, value in advanced_insights.items():
-            try:
-                json.dumps(value)
-                serializable_insights[key] = value
-            except TypeError:
-                serializable_insights[key] = str(value)
-        
-        return {**data_insights, **serializable_insights}
+        try:
+            # Analyze data structure
+            data_insights = self.analyze_data_structure()
+            
+            # Generate visualizations
+            self.generate_visualizations()
+            
+            # Perform advanced analysis
+            advanced_insights = self.perform_advanced_analysis(data_insights)
+            
+            # Generate narrative from the dataset
+            narrative = self.generate_story()
+            
+            # Get image paths for analysis
+            image_paths = [
+                os.path.join(self.output_dir, 'numeric_distributions.png'),
+                os.path.join(self.output_dir, 'correlation_heatmap.png'),
+                os.path.join(self.output_dir, 'clustering_analysis.png'),
+                os.path.join(self.output_dir, 'pca_variance.png')
+            ]
+            
+            # Analyze images with LLM
+            image_analysis = self.analyze_images_with_llm(image_paths)
+            
+            # Combine narrative with image analysis
+            full_narrative = narrative + "\n\n## Image Analysis\n" + image_analysis
+            
+            # Generate README in both locations
+            self.generate_readme(full_narrative)
+            
+            # Also generate README in eval directory
+            eval_dir = os.path.join('eval', os.path.basename(self.output_dir))
+            os.makedirs(eval_dir, exist_ok=True)
+            eval_readme_path = os.path.join(eval_dir, 'README.md')
+            with open(eval_readme_path, 'w', encoding='utf-8') as f:
+                f.write(full_narrative)
+            
+            # Ensure all values are JSON serializable
+            serializable_insights = {}
+            for key, value in advanced_insights.items():
+                try:
+                    json.dumps(value)
+                    serializable_insights[key] = value
+                except TypeError:
+                    serializable_insights[key] = str(value)
+            
+            return {**data_insights, **serializable_insights}
+        except Exception as e:
+            print(f"Error in run_analysis: {str(e)}")
+            raise
 
     def query_llm_with_function_calling(self, analysis_details: Dict[str, Any]) -> str:
         """
@@ -865,50 +887,6 @@ class DataAnalyzer:
             }
         ]
         return functions
-
-    def run_analysis(self):
-        """
-        Orchestrate the entire data analysis workflow with dynamic function calling
-        """
-        # Analyze data structure
-        data_insights = self.analyze_data_structure()
-        
-        # Generate visualizations
-        self.generate_visualizations()
-        
-        # Perform advanced analysis
-        advanced_insights = self.perform_advanced_analysis(data_insights)
-        
-        # Generate narrative from the dataset
-        narrative = self.generate_story()
-        
-        # Get image paths for analysis
-        image_paths = [
-            os.path.join(self.output_dir, 'numeric_distributions.png'),
-            os.path.join(self.output_dir, 'correlation_heatmap.png'),
-            os.path.join(self.output_dir, 'clustering_analysis.png'),
-            os.path.join(self.output_dir, 'pca_variance.png')
-        ]
-        
-        # Analyze images with LLM
-        image_analysis = self.analyze_images_with_llm(image_paths)
-        
-        # Combine narrative with image analysis
-        full_narrative = narrative + "\n\n## Image Analysis\n" + image_analysis
-        
-        # Generate README
-        self.generate_readme(full_narrative)
-        
-        # Ensure all values are JSON serializable
-        serializable_insights = {}
-        for key, value in advanced_insights.items():
-            try:
-                json.dumps(value)
-                serializable_insights[key] = value
-            except TypeError:
-                serializable_insights[key] = str(value)
-        
-        return {**data_insights, **serializable_insights}
 
 def main():
     if len(sys.argv) < 2:
