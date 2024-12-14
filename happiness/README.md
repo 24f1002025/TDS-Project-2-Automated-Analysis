@@ -117,21 +117,20 @@ These insights can guide further exploration into the impacts of various factors
 - **Positive affect**: 442 unique values
 - **Negative affect**: 394 unique values
 
-    ### Missing Data
-    | Column | Missing Values | Percentage |
-|--------|----------------|------------|
-| Country name | 0 | 0.00% |
-| year | 0 | 0.00% |
-| Life Ladder | 0 | 0.00% |
-| Log GDP per capita | 28 | 1.18% |
-| Social support | 13 | 0.55% |
-| Healthy life expectancy at birth | 63 | 2.67% |
-| Freedom to make life choices | 36 | 1.52% |
-| Generosity | 81 | 3.43% |
-| Perceptions of corruption | 125 | 5.29% |
-| Positive affect | 24 | 1.02% |
-| Negative affect | 16 | 0.68% |
+### Missing Data
 
+| Column                                     | Missing Values | Percentage |
+|--------------------------------------------|----------------|------------|
+| Country name                               | 0              | 0.00%      |
+| year                                       | 0              | 0.00%      |
+| Life Ladder                                | 0              | 0.00%      |
+| Log GDP per capita                         | 28             | 1.18%      |
+| Social support                             | 13             | 0.55%      |
+| Healthy life expectancy at birth           | 63             | 2.67%      |
+| Freedom to make life choices               | 36             | 1.52%      |
+| Generosity                                 | 81             | 3.43%      |
+| Perceptions of corruption                  | 125            | 5.29%      |
+| Positive affect                            | 24             | 1.02%      |
+| Negative affect                            | 16             | 0.68%      |
 
-    **Prepared with ❤️ by DataStory Explorer**
-    
+**Prepared with ❤️ by DataStory Explorer**
