@@ -65,9 +65,9 @@ In the end, this dataset is not just a collection of numbers and titles; it is a
 
     ## 📊 Dataset Snapshot
 
-    ### Overview
-    - **Total Observations**: 2652 data points
-    - **Exploratory Dimensions**: 8 unique attributes
+    ### 📋 Overview
+    - **Total Observations**: 2652 data points 📝
+    - **Exploratory Dimensions**: 8 unique attributes 🔬
 
     ### Data Coverage
     - **date**: 96.27% covered
