@@ -72,11 +72,11 @@ Here's an analysis of the visualizations you've provided:
 
 These insights can guide further exploration into the impacts of various factors on life satisfaction and point towards potential areas for social policy development.
 
-    ## 📊 Dataset Snapshot
+## 📊 Dataset Snapshot
 
-    ### 📋 Overview
-    - **Total Observations**: 2363 data points📝
-    - **Exploratory Dimensions**: 11 unique attributes🔬
+### 📋 Overview
+- **Total Observations**: 2363 data points📝
+- **Exploratory Dimensions**: 11 unique attributes🔬
 ### Data Coverage
 - **Country name**: 100.00% covered
 - **year**: 100.00% covered
