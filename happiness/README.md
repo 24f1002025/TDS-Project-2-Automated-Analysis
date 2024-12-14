@@ -80,57 +80,57 @@ These insights can guide further exploration into the impacts of various factors
 
     ### Data Coverage
     - **Country name**: 100.00% covered
-- **year**: 100.00% covered
-- **Life Ladder**: 100.00% covered
-- **Log GDP per capita**: 98.82% covered
-- **Social support**: 99.45% covered
-- **Healthy life expectancy at birth**: 97.33% covered
-- **Freedom to make life choices**: 98.48% covered
-- **Generosity**: 96.57% covered
-- **Perceptions of corruption**: 94.71% covered
-- **Positive affect**: 98.98% covered
-- **Negative affect**: 99.32% covered
-
-    ### Column Types
-    - **Country name**: object
-- **year**: int64
-- **Life Ladder**: float64
-- **Log GDP per capita**: float64
-- **Social support**: float64
-- **Healthy life expectancy at birth**: float64
-- **Freedom to make life choices**: float64
-- **Generosity**: float64
-- **Perceptions of corruption**: float64
-- **Positive affect**: float64
-- **Negative affect**: float64
-
-    ### Unique Values
-    - **Country name**: 165 unique values
-- **year**: 19 unique values
-- **Life Ladder**: 1814 unique values
-- **Log GDP per capita**: 1760 unique values
-- **Social support**: 484 unique values
-- **Healthy life expectancy at birth**: 1126 unique values
-- **Freedom to make life choices**: 550 unique values
-- **Generosity**: 650 unique values
-- **Perceptions of corruption**: 613 unique values
-- **Positive affect**: 442 unique values
-- **Negative affect**: 394 unique values
-
-### Missing Data
-
-| Column                                     | Missing Values | Percentage |
-|--------------------------------------------|----------------|------------|
-| Country name                               | 0              | 0.00%      |
-| year                                       | 0              | 0.00%      |
-| Life Ladder                                | 0              | 0.00%      |
-| Log GDP per capita                         | 28             | 1.18%      |
-| Social support                             | 13             | 0.55%      |
-| Healthy life expectancy at birth           | 63             | 2.67%      |
-| Freedom to make life choices               | 36             | 1.52%      |
-| Generosity                                 | 81             | 3.43%      |
-| Perceptions of corruption                  | 125            | 5.29%      |
-| Positive affect                            | 24             | 1.02%      |
-| Negative affect                            | 16             | 0.68%      |
-
-**Prepared with ❤️ by DataStory Explorer**
+    - **year**: 100.00% covered
+    - **Life Ladder**: 100.00% covered
+    - **Log GDP per capita**: 98.82% covered
+    - **Social support**: 99.45% covered
+    - **Healthy life expectancy at birth**: 97.33% covered
+    - **Freedom to make life choices**: 98.48% covered
+    - **Generosity**: 96.57% covered
+    - **Perceptions of corruption**: 94.71% covered
+    - **Positive affect**: 98.98% covered
+    - **Negative affect**: 99.32% covered
+    
+        ### Column Types
+        - **Country name**: object
+    - **year**: int64
+    - **Life Ladder**: float64
+    - **Log GDP per capita**: float64
+    - **Social support**: float64
+    - **Healthy life expectancy at birth**: float64
+    - **Freedom to make life choices**: float64
+    - **Generosity**: float64
+    - **Perceptions of corruption**: float64
+    - **Positive affect**: float64
+    - **Negative affect**: float64
+    
+        ### Unique Values
+        - **Country name**: 165 unique values
+    - **year**: 19 unique values
+    - **Life Ladder**: 1814 unique values
+    - **Log GDP per capita**: 1760 unique values
+    - **Social support**: 484 unique values
+    - **Healthy life expectancy at birth**: 1126 unique values
+    - **Freedom to make life choices**: 550 unique values
+    - **Generosity**: 650 unique values
+    - **Perceptions of corruption**: 613 unique values
+    - **Positive affect**: 442 unique values
+    - **Negative affect**: 394 unique values
+    
+    ### Missing Data
+    
+    | Column                                     | Missing Values | Percentage |
+    |--------------------------------------------|----------------|------------|
+    | Country name                               | 0              | 0.00%      |
+    | year                                       | 0              | 0.00%      |
+    | Life Ladder                                | 0              | 0.00%      |
+    | Log GDP per capita                         | 28             | 1.18%      |
+    | Social support                             | 13             | 0.55%      |
+    | Healthy life expectancy at birth           | 63             | 2.67%      |
+    | Freedom to make life choices               | 36             | 1.52%      |
+    | Generosity                                 | 81             | 3.43%      |
+    | Perceptions of corruption                  | 125            | 5.29%      |
+    | Positive affect                            | 24             | 1.02%      |
+    | Negative affect                            | 16             | 0.68%      |
+    
+    **Prepared with ❤️ by DataStory Explorer**
