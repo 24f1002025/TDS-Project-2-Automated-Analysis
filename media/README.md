@@ -99,18 +99,17 @@ In the end, this dataset is not just a collection of numbers and titles; it is a
 - **quality**: 5 unique values
 - **repeatability**: 3 unique values
 
-    ### Missing Data
-    | Column | Missing Values | Percentage |
-|--------|----------------|------------|
-| date | 99 | 3.73% |
-| language | 0 | 0.00% |
-| type | 0 | 0.00% |
-| title | 0 | 0.00% |
-| by | 262 | 9.88% |
-| overall | 0 | 0.00% |
-| quality | 0 | 0.00% |
-| repeatability | 0 | 0.00% |
+### Missing Data
 
+| Column         | Missing Values | Percentage |
+|---------------|----------------|------------|
+| date          | 99             | 3.73%      |
+| language      | 0              | 0.00%      |
+| type          | 0              | 0.00%      |
+| title         | 0              | 0.00%      |
+| by            | 262            | 9.88%      |
+| overall       | 0              | 0.00%      |
+| quality       | 0              | 0.00%      |
+| repeatability | 0              | 0.00%      |
 
-    **Prepared with ❤️ by DataStory Explorer**
-    
+**Prepared with ❤️ by DataStory Explorer**
