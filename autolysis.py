@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import httpx
 from typing import Dict, Any, List, Optional
+import shutil
 
 # Advanced analysis imports
 from sklearn.preprocessing import StandardScaler
@@ -1105,6 +1106,9 @@ class DataAnalyzer:
         
         return "\n".join(correlation_insights)
 
+   
+
+
     def run_analysis(self):
         """
         Orchestrate the entire data analysis workflow with fallback mechanisms
@@ -1150,6 +1154,24 @@ class DataAnalyzer:
             # Generate README (always works)
             self.generate_readme(full_narrative)
             
+            # Copy README to eval folder
+            input_file = sys.argv[1]  # The input CSV file
+            readme_in_analysis_dir = os.path.join(self.output_dir, 'README.md')
+            
+            # Construct path to eval folder README
+            eval_folder = os.path.join(os.path.dirname(input_file), 'eval')
+            os.makedirs(eval_folder, exist_ok=True)
+            eval_readme_path = os.path.join(eval_folder, 
+                                            os.path.basename(input_file).replace('.csv', '_README.md'))
+            
+            # Copy the README
+            try:
+                import shutil
+                shutil.copy(readme_in_analysis_dir, eval_readme_path)
+                print(f"📄 README copied to: {eval_readme_path}")
+            except Exception as copy_error:
+                print(f"❌ Failed to copy README: {copy_error}")
+            
             # Ensure serializable insights
             serializable_insights = {}
             for key, value in advanced_insights.items():
@@ -1165,6 +1187,8 @@ class DataAnalyzer:
             print(f"❌ Comprehensive Analysis Failed: {e}")
             import traceback
             traceback.print_exc()
+
+
 
 
 
