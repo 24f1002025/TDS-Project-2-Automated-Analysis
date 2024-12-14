@@ -2,7 +2,7 @@
 
     ## 📖 Data Journey: Unveiling Insights
 
-    **Title: The Interwoven Threads of Happiness: A Global Journey Through Life Quality**
+    **Title: The Interwoven Threads of Happiness: A Global Journey Through Life Quality🌍**
 
 **Introduction:**
 In a world brimming with diversity, where cultures and landscapes paint a rich tapestry, the quest for happiness connects us all. A dataset of 2,363 entries spanning various countries and years invites us to embark on a journey to uncover the hidden stories behind the numbers. From the peaks of Argentina to the tropical warmth of Costa Rica, we will explore how economic prosperity, social ties, health, and perceptions of freedom shape the fabric of life satisfaction—captured in the poignant measure known as the "Life Ladder."
@@ -74,9 +74,9 @@ These insights can guide further exploration into the impacts of various factors
 
     ## 📊 Dataset Snapshot
 
-    ### Overview
-    - **Total Observations**: 2363 data points
-    - **Exploratory Dimensions**: 11 unique attributes
+    ### 📋 Overview
+    - **Total Observations**: 2363 data points📝
+    - **Exploratory Dimensions**: 11 unique attributes🔬
 
     ### Data Coverage
     - **Country name**: 100.00% covered
