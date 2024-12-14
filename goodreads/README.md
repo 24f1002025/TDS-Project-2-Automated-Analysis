@@ -63,11 +63,11 @@ Let's analyze the provided visualizations step by step:
 Conclusion
 Overall, the visualizations reveal interesting distributions, strong correlations, distinct clustering, and insights into variance. Exploring the reasons behind these patterns could provide valuable insights into reader preferences and book characteristics in the dataset. Further investigations, such as regression analyses or deeper clustering methods, could provide more detailed insights into the relationships and patterns observed.
 
-    ## 📊 Dataset Snapshot
+## 📊 Dataset Snapshot
 
-    ###📋 Overview
-    - **Total Observations**: 10000 data points 📝
-    - **Exploratory Dimensions**: 23 unique attributes 🔬
+###📋 Overview
+- **Total Observations**: 10000 data points 📝
+- **Exploratory Dimensions**: 23 unique attributes 🔬
 
 ### Data Coverage
 - **book_id**: 100.00% covered
