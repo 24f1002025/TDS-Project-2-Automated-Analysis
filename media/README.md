@@ -69,8 +69,8 @@ In the end, this dataset is not just a collection of numbers and titles; it is a
     - **Total Observations**: 2652 data points 📝
     - **Exploratory Dimensions**: 8 unique attributes 🔬
 
-    ### Data Coverage
-    - **date**: 96.27% covered
+### Data Coverage
+- **date**: 96.27% covered
 - **language**: 100.00% covered
 - **type**: 100.00% covered
 - **title**: 100.00% covered
@@ -79,8 +79,8 @@ In the end, this dataset is not just a collection of numbers and titles; it is a
 - **quality**: 100.00% covered
 - **repeatability**: 100.00% covered
 
-    ### Column Types
-    - **date**: object
+### Column Types
+- **date**: object
 - **language**: object
 - **type**: object
 - **title**: object
@@ -89,8 +89,8 @@ In the end, this dataset is not just a collection of numbers and titles; it is a
 - **quality**: int64
 - **repeatability**: int64
 
-    ### Unique Values
-    - **date**: 2055 unique values
+### Unique Values
+- **date**: 2055 unique values
 - **language**: 11 unique values
 - **type**: 8 unique values
 - **title**: 2312 unique values
