@@ -63,53 +63,59 @@ In the end, this dataset is not just a collection of numbers and titles; it is a
 - The clustering analysis offers insights into segment identification within the data, paving the way for tailored strategies based on group behavior.
 - The variance plot confirms that dimensionality reduction could be beneficial without losing significant information.
 
-    ## 📊 Dataset Snapshot
+## 📊 Dataset Snapshot
 
-    ### 📋 Overview
-    - **Total Observations**: 2652 data points 📝
-    - **Exploratory Dimensions**: 8 unique attributes 🔬
+### 📋 Overview
+- **Total Observations**: 2,652 data points 📝
+- **Exploratory Dimensions**: 8 unique attributes 🔬
 
-    ### Data Coverage
-    - **date**: 96.27% covered
-    - **language**: 100.00% covered
-    - **type**: 100.00% covered
-    - **title**: 100.00% covered
-    - **by**: 90.12% covered
-    - **overall**: 100.00% covered
-    - **quality**: 100.00% covered
-    - **repeatability**: 100.00% covered
-    
-    ### Column Types
-    - **date**: object
-    - **language**: object
-    - **type**: object
-    - **title**: object
-    - **by**: object
-    - **overall**: int64
-    - **quality**: int64
-    - **repeatability**: int64
-    
-    ### Unique Values
-    - **date**: 2055 unique values
-    - **language**: 11 unique values
-    - **type**: 8 unique values
-    - **title**: 2312 unique values
-    - **by**: 1528 unique values
-    - **overall**: 5 unique values
-    - **quality**: 5 unique values
-    - **repeatability**: 3 unique values
-    
-    ### Missing Data
-    
-    | Column         | Missing Values | Percentage |
-    |---------------|----------------|------------|
-    | date          | 99             | 3.73%      |
-    | language      | 0              | 0.00%      |
-    | type          | 0              | 0.00%      |
-    | title         | 0              | 0.00%      |
-    | by            | 262            | 9.88%      |
-    | overall       | 0              | 0.00%      |
-    | quality       | 0              | 0.00%      |
-    | repeatability | 0              | 0.00%      |
-    
-    **Prepared with ❤️ by DataStory Explorer**
+### Data Coverage
+| Column         | Coverage   |
+|---------------|------------|
+| date          | 96.27%     |
+| language      | 100.00%    |
+| type          | 100.00%    |
+| title         | 100.00%    |
+| by            | 90.12%     |
+| overall       | 100.00%    |
+| quality       | 100.00%    |
+| repeatability | 100.00%    |
+
+### Column Types
+| Column         | Data Type  |
+|---------------|------------|
+| date          | object     |
+| language      | object     |
+| type          | object     |
+| title         | object     |
+| by            | object     |
+| overall       | int64      |
+| quality       | int64      |
+| repeatability | int64      |
+
+### Unique Values
+| Column         | Unique Values |
+|---------------|---------------|
+| date          | 2,055         |
+| language      | 11            |
+| type          | 8             |
+| title         | 2,312         |
+| by            | 1,528         |
+| overall       | 5             |
+| quality       | 5             |
+| repeatability | 3             |
+
+### Missing Data
+
+| Column         | Missing Values | Percentage |
+|---------------|----------------|------------|
+| date          | 99             | 3.73%      |
+| language      | 0              | 0.00%      |
+| type          | 0              | 0.00%      |
+| title         | 0              | 0.00%      |
+| by            | 262            | 9.88%      |
+| overall       | 0              | 0.00%      |
+| quality       | 0              | 0.00%      |
+| repeatability | 0              | 0.00%      |
+
+**Prepared with ❤️ by DataStory Explorer**
