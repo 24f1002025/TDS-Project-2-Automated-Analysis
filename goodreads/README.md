@@ -69,8 +69,8 @@ Overall, the visualizations reveal interesting distributions, strong correlation
     - **Total Observations**: 10000 data points 📝
     - **Exploratory Dimensions**: 23 unique attributes 🔬
 
-    ### Data Coverage
-    - **book_id**: 100.00% covered
+### Data Coverage
+- **book_id**: 100.00% covered
 - **goodreads_book_id**: 100.00% covered
 - **best_book_id**: 100.00% covered
 - **work_id**: 100.00% covered
@@ -94,8 +94,8 @@ Overall, the visualizations reveal interesting distributions, strong correlation
 - **image_url**: 100.00% covered
 - **small_image_url**: 100.00% covered
 
-    ### Column Types
-    - **book_id**: int64
+### Column Types
+- **book_id**: int64
 - **goodreads_book_id**: int64
 - **best_book_id**: int64
 - **work_id**: int64
@@ -119,8 +119,8 @@ Overall, the visualizations reveal interesting distributions, strong correlation
 - **image_url**: object
 - **small_image_url**: object
 
-    ### Unique Values
-    - **book_id**: 10000 unique values
+### Unique Values
+- **book_id**: 10000 unique values
 - **goodreads_book_id**: 10000 unique values
 - **best_book_id**: 10000 unique values
 - **work_id**: 10000 unique values
