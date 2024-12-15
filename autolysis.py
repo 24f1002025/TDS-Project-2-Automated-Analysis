@@ -21,6 +21,7 @@ import httpx
 from typing import Dict, Any, List, Optional
 import shutil
 from datetime import datetime
+import PIL.Image
 
 # Advanced analysis imports
 from sklearn.preprocessing import StandardScaler
@@ -839,7 +840,7 @@ class DataAnalyzer:
         return {
             'total_rows': len(self.df),
             'total_columns': len(self.df.columns),
-            'column_types': self.column_types,
+            'column_types': {col: str(dtype) for col, dtype in self.df.dtypes.items()},
             'missing_values': self.df.isnull().sum().to_dict(),
             'unique_values': {col: self.df[col].nunique() for col in self.df.columns},
             'data_coverage': {
@@ -1010,6 +1011,7 @@ class DataAnalyzer:
     **Prepared with ❤️ by DataStory Explorer**
     """
 
+        # Write README
         with open(readme_path, 'w', encoding='utf-8') as f:
             f.write(readme_content)
 
@@ -1200,6 +1202,16 @@ class DataAnalyzer:
                     f.write(fallback_readme_content)
                 print(f"📄 Minimal README created at: {eval_readme_path}")
                 analysis_results['readme_error'] = str(readme_error)
+
+            # Copy all generated files to eval folder
+            try:
+                for filename in os.listdir(self.output_dir):
+                    file_path = os.path.join(self.output_dir, filename)
+                    if os.path.isfile(file_path):
+                        shutil.copy(file_path, eval_folder)
+                        print(f"📄 Copied {filename} to eval folder")
+            except Exception as copy_error:
+                print(f"❌ Failed to copy files to eval folder: {copy_error}")
 
             # Final Analysis Status
             analysis_results['analysis_status'] = 'Completed'
