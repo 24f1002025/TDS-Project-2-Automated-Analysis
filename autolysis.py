@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #   "pandas", "matplotlib", "seaborn", "httpx", "chardet",
-#   "scikit-learn", "statsmodels"
+#   "scikit-learn", "statsmodels", "joblib"
 # ]
 # ///
 
@@ -21,6 +21,8 @@ import httpx
 from typing import Dict, Any, List, Optional
 import shutil
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import joblib
 
 # Advanced analysis imports
 from sklearn.preprocessing import StandardScaler
@@ -223,231 +225,49 @@ class DataAnalyzer:
         readme_path = os.path.join(self.output_dir, 'README.md')
 
         # Prepare dataset profile
-        dataset_profile = self._generate_comprehensive_profile()
+        dataset_profile = self.analyze_data_structure()
 
         # Construct README content with multiple sections
         readme_content = f"""# 🔍 Dataset Analysis Report: {os.path.basename(self.output_dir)}
 
-    ## 📖 Executive Summary
+## 📖 Executive Summary
 
-    {narrative}
+{narrative}
 
-    ## 🌐 Dataset Overview
+## 🌐 Dataset Overview
 
-    ### Basic Metrics
-    - **Total Observations**: {dataset_profile['total_rows']} records
-    - **Exploratory Dimensions**: {dataset_profile['total_columns']} attributes
-    - **Data Completeness**: {self._calculate_overall_completeness(dataset_profile)}%
+### Basic Metrics
+- **Total Observations**: {dataset_profile['total_rows']} records
+- **Exploratory Dimensions**: {dataset_profile['total_columns']} attributes
+- **Missing Values**: {sum(dataset_profile['missing_values'].values())} total
 
-    ### Data Composition
-    {self._format_data_composition(dataset_profile)}
+### Missing Data by Column
 
-    ## 📊 Detailed Insights
+| Column | Missing Count |
+|--------|---------------|
+"""
+        for col, missing in dataset_profile['missing_values'].items():
+            readme_content += f"| {str(col)} | {str(missing)} |\n"
 
-    ### Column-Level Analysis
-    {self._generate_column_insights(dataset_profile)}
+        readme_content += f"""
 
-    ### Missing Data Landscape
-    {self._generate_missing_data_report(dataset_profile)}
+## 📊 Visualizations
 
-    ## 🔬 Statistical Highlights
+Check the output directory for the following visualizations:
+- Numeric distributions for numeric columns
 
-    ### Numeric Column Summaries
-    {self._generate_numeric_summaries()}
+## 🚨 Data Quality Insights
 
-    ### Categorical Column Insights
-    {self._generate_categorical_insights()}
+- Total missing values: {sum(dataset_profile['missing_values'].values())}
+- Columns with the highest missing values: {max(dataset_profile['missing_values'], key=dataset_profile['missing_values'].get, default='None')} ({max(dataset_profile['missing_values'].values(), default=0)})
 
-    ## 🚨 Data Quality Indicators
-
-    ### Potential Anomalies
-    {self._detect_data_anomalies()}
-
-    ## 🔮 Recommendations
-
-    {self._generate_data_recommendations()}
-
-    **Generated on**: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
-    **Analysis Tool**: Automated Data Storyteller
-    """
+**Generated on**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Analysis Tool**: Automated Data Storyteller
+"""
 
         # Write README
         with open(readme_path, 'w', encoding='utf-8') as f:
             f.write(readme_content)
-
-    def _generate_comprehensive_profile(self) -> Dict[str, Any]:
-        """
-        Create a comprehensive dataset profile
-
-        Returns:
-            Dict with detailed dataset characteristics
-        """
-        return {
-            'total_rows': len(self.df),
-            'total_columns': len(self.df.columns),
-            'column_types': {col: str(dtype) for col, dtype in self.df.dtypes.items()},
-            'missing_values': self.df.isnull().sum().to_dict(),
-            'unique_values': {col: self.df[col].nunique() for col in self.df.columns},
-            'data_coverage': {
-                col: 1 - (self.df[col].isnull().sum() / len(self.df))
-                for col in self.df.columns
-            }
-        }
-    def _calculate_overall_completeness(self, profile: Dict) -> float:
-        """
-        Calculate overall dataset completeness
-
-        Args:
-            profile (Dict): Dataset profile
-
-        Returns:
-            float: Percentage of complete data
-        """
-        completeness_values = list(profile['data_coverage'].values())
-        return round(sum(completeness_values) / len(completeness_values) * 100, 2)
-
-    def _format_data_composition(self, profile: Dict) -> str:
-        """
-        Format data composition insights
-
-        Args:
-            profile (Dict): Dataset profile
-
-        Returns:
-            str: Formatted data composition report
-        """
-        composition = []
-        for col, dtype in profile['column_types'].items():
-            unique_count = profile['unique_values'].get(col, 0)
-            coverage = profile['data_coverage'].get(col, 0) * 100
-
-            composition.append(
-                f"- **{col}** (Type: {dtype})\n"
-                f"  * Unique Values: {unique_count}\n"
-                f"  * Data Coverage: {coverage:.2f}%"
-            )
-
-        return "\n".join(composition)
-
-    def _generate_column_insights(self, profile: Dict) -> str:
-        """
-        Generate detailed column-level insights
-
-        Args:
-            profile: Dict): Dataset profile
-
-        Returns:
-            str: Column insights report
-        """
-        insights = []
-        numeric_cols = self.df.select_dtypes(include=['number']).columns
-        categorical_cols = self.df.select_dtypes(include=['object']).columns
-
-        insights.append("### Numeric Columns")
-        for col in numeric_cols:
-            stats = self.df[col].describe()
-            insights.append(
-                f"- **{col}**\n"
-                f"  * Mean: {stats['mean']:.2f}\n"
-                f"  * Std Dev: {stats['std']:.2f}\n"
-                f"  * Min: {stats['min']:.2f}\n"
-                f"  * Max: {stats['max']:.2f}"
-            )
-
-        insights.append("\n### Categorical Columns")
-        for col in categorical_cols:
-            top_categories = self.df[col].value_counts().head(3)
-            insights.append(
-                f"- **{col}**\n"
-                f"  * Top Categories: {dict(top_categories)}"
-            )
-
-        return "\n".join(insights)
-
-    def _generate_missing_data_report(self, profile: Dict) -> str:
-        """
-        Generate a comprehensive missing data report
-
-        Args:
-            profile (Dict): Dataset profile
-
-        Returns:
-            str: Missing data report
-        """
-        missing_report = "| Column | Missing Count | Missing Percentage |\n"
-        missing_report += "|--------|---------------|-------------------|\n"
-
-        for col, missing in profile['missing_values'].items():
-            percentage = (missing / len(self.df)) * 100
-            missing_report += f"| {col} | {missing} | {percentage:.2f}% |\n"
-
-        return missing_report
-
-    def _detect_data_anomalies(self) -> str:
-        """
-        Detect potential data anomalies
-
-        Returns:
-            str: Anomalies report
-        """
-        anomalies = []
-        numeric_cols = self.df.select_dtypes(include=['number']).columns
-
-        for col in numeric_cols:
-            Q1 = self.df[col].quantile(0.25)
-            Q3 = self.df[col].quantile(0.75)
-            IQR = Q3 - Q1
-            lower_bound = Q1 - 1.5 * IQR
-            upper_bound = Q3 + 1.5 * IQR
-
-            outliers = self.df[(self.df[col] < lower_bound) | (self.df[col] > upper_bound)]
-
-            if len(outliers) > 0:
-                anomalies.append(
-                    f"- **{col}** Potential Outliers:\n"
-                    f"  * Outlier Count: {len(outliers)}\n"
-                    f"  * Lower Bound: {lower_bound:.2f}\n"
-                    f"  * Upper Bound: {upper_bound:.2f}"
-                )
-
-        return "\n".join(anomalies) if anomalies else "No significant anomalies detected."
-
-    def _generate_data_recommendations(self) -> str:
-        """
-        Generate data-driven recommendations
-
-        Returns:
-            str: Recommendations for data handling
-        """
-        recommendations = []
-
-        # Check for high missing data columns
-        missing_threshold = 0.3  # 30% missing data
-        high_missing_cols = [
-            col for col, missing in self.df.isnull().sum().items()
-            if missing / len(self.df) > missing_threshold
-        ]
-
-        if high_missing_cols:
-            recommendations.append(
-                "### 🚨 Missing Data Recommendations\n"
-                f"Columns with high missing data: {', '.join(high_missing_cols)}\n"
-                "- Consider imputation techniques\n"
-                "- Evaluate the need for these columns in analysis"
-            )
-        else:
-            recommendations.append("### ✅ No Immediate Recommendations for Missing Data")
-
-        # Check for potential outliers
-        anomalies = self._detect_data_anomalies()
-        if "Potential Outliers" in anomalies:
-            recommendations.append(
-                "### 🚨 Outlier Recommendations\n"
-                "- Review the identified outliers for potential data entry errors\n"
-                "- Consider robust statistical methods for analysis"
-            )
-
-        return "\n\n".join(recommendations) if recommendations else "No recommendations available."
 
     def perform_advanced_analysis(self, data_insights: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -622,54 +442,6 @@ class DataAnalyzer:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
 
-    def _format_data_coverage(self, coverage: Dict[str, float]) -> str:
-        """
-        Format data coverage information
-
-        Args:
-            coverage (Dict): Data coverage dictionary
-
-        Returns:
-            str: Formatted coverage information
-        """
-        coverage_lines = [
-            f"- **{col}**: {coverage*100:.2f}% covered"
-            for col, coverage in coverage.items()
-        ]
-        return "\n".join(coverage_lines)
-
-    def _format_column_types(self, column_types: Dict[str, str]) -> str:
-        """
-        Format column types
-
-        Args:
-            column_types (Dict): Column type dictionary
-
-        Returns:
-            str: Formatted column types
-        """
-        type_lines = [
-            f"- **{col}**: {dtype}"
-            for col, dtype in column_types.items()
-        ]
-        return "\n".join(type_lines)
-
-    def _format_unique_values(self, unique_values: Dict[str, int]) -> str:
-        """
-        Format unique values information
-
-        Args:
-            unique_values (Dict): Unique values dictionary
-
-        Returns:
-            str: Formatted unique values
-        """
-        unique_lines = [
-            f"- **{col}**: {count} unique values"
-            for col, count in unique_values.items()
-        ]
-        return "\n".join(unique_lines)
-
     def analyze_images_with_llm(self, image_paths: List[str]) -> str:
         """
         Analyze generated images using LLM vision with comprehensive error handling
@@ -829,25 +601,6 @@ class DataAnalyzer:
 
         return fallback_analysis
 
-    def _generate_dataset_profile(self) -> Dict[str, Any]:
-        """
-        Generate a comprehensive dataset profile
-
-        Returns:
-            Dict with dataset characteristics
-        """
-        return {
-            'total_rows': len(self.df),
-            'total_columns': len(self.df.columns),
-            'column_types': self.column_types,
-            'missing_values': self.df.isnull().sum().to_dict(),
-            'unique_values': {col: self.df[col].nunique() for col in self.df.columns},
-            'data_coverage': {
-                col: 1 - (self.df[col].isnull().sum() / len(self.df))
-                for col in self.df.columns
-            }
-        }
-
     def generate_story(self) -> str:
         """
         Generate an adaptive, context-aware narrative
@@ -968,383 +721,6 @@ class DataAnalyzer:
             print(f"⚠️ LLM Story Generation Failed: {e}")
             return self._generate_fallback_narrative()
 
-    def generate_readme(self, narrative: str):
-        """
-        Generate a comprehensive and engaging README
-
-        Args:
-            narrative (str): Generated narrative
-        """
-        readme_path = os.path.join(self.output_dir, 'README.md')
-
-        # Determine dataset type and create a captivating title
-        dataset_name = os.path.basename(self.output_dir).replace('_analysis', '')
-
-        # Generate dataset profile for additional context
-        dataset_profile = self._generate_dataset_profile()
-
-        readme_content = f"""# 🔍 The Hidden Stories of {dataset_name.capitalize()} Data
-
-    ## 📖 Data Journey: Unveiling Insights
-
-    {narrative}
-
-    ## 📊 Dataset Snapshot
-
-    ### Overview
-    - **Total Observations**: {dataset_profile['total_rows']} data points
-    - **Exploratory Dimensions**: {dataset_profile['total_columns']} unique attributes
-
-    ### Data Coverage
-    {self._format_data_coverage(dataset_profile['data_coverage'])}
-
-    ### Column Types
-    {self._format_column_types(dataset_profile['column_types'])}
-
-    ### Unique Values
-    {self._format_unique_values(dataset_profile['unique_values'])}
-
-    ### Missing Data
-    {self._format_missing_data_summary(dataset_profile['missing_values'])}
-
-    **Prepared with ❤️ by DataStory Explorer**
-    """
-
-        with open(readme_path, 'w', encoding='utf-8') as f:
-            f.write(readme_content)
-
-    def _format_missing_data_summary(self, missing_values: Dict[str, int]) -> str:
-        """
-        Generate a summary of missing data
-
-        Args:
-            missing_values (Dict): Dictionary of missing values per column
-
-        Returns:
-            str: Formatted missing data summary
-        """
-        missing_summary = "| Column | Missing Values | Percentage |\n|--------|----------------|------------|\n"
-
-        for col, missing in missing_values.items():
-            percentage = (missing / len(self.df)) * 100
-            missing_summary += f"| {col} | {missing} | {percentage:.2f}% |\n"
-
-        return missing_summary
-
-    def perform_correlation_analysis(self, columns: Optional[List[str]] = None) -> str:
-        """
-        Perform correlation analysis on specified columns
-
-        Args:
-            columns (Optional[List[str]]): Columns to analyze correlations
-
-        Returns:
-            str: Correlation analysis narrative
-        """
-        # If no columns specified, use all numeric columns
-        if columns is None:
-            columns = self.df.select_dtypes(include=['number']).columns
-
-        # Compute correlation matrix
-        correlation_matrix = self.df[columns].corr()
-
-        # Prepare correlation narrative
-        correlation_insights = []
-        for i in range(len(columns)):
-            for j in range(i+1, len(columns)):
-                col1, col2 = columns[i], columns[j]
-                correlation = correlation_matrix.loc[col1, col2]
-
-                # Interpret correlation strength
-                if abs(correlation) > 0.7:
-                    strength = "strong"
-                elif abs(correlation) > 0.4:
-                    strength = "moderate"
-                else:
-                    strength = "weak"
-
-                # Determine correlation direction
-                direction = "positive" if correlation > 0 else "negative"
-
-                correlation_insights.append(f"The correlation between {col1} and {col2} is {strength} ({direction}) with a value of {correlation:.2f}.")
-
-        return "\n".join(correlation_insights)
-
-    def run_analysis(self, input_file=None):
-        """
-        Orchestrate the entire data analysis workflow with comprehensive fallback mechanisms
-
-        Args:
-            input_file (str, optional): Specific input file path. Defaults to sys.argv[1] if not provided.
-
-        Returns:
-            dict: Comprehensive analysis results
-        """
-        # Start time tracking
-        start_time = time.time()
-
-        try:
-            # Determine input file path
-            if input_file is None:
-                input_file = sys.argv[1] if len(sys.argv) > 1 else None
-
-            if not input_file:
-                raise ValueError("No input file specified")
-
-            print(f"🔍 Starting Data Analysis for {input_file}")
-
-            # Ensure output and eval directories exist
-            self.output_dir = input_file.replace('.csv', '_analysis')
-            os.makedirs(self.output_dir, exist_ok=True)
-
-            eval_folder = os.path.join(os.path.dirname(input_file), 'eval')
-            os.makedirs(eval_folder, exist_ok=True)
-
-            # Prepare eval README path
-            eval_readme_path = os.path.join(
-                eval_folder,
-                os.path.basename(input_file).replace('.csv', '_README.md')
-            )
-
-            # Fallback README content
-            fallback_readme_content = f"""# Analysis of {os.path.basename(input_file)}
-
-    ## Dataset Overview
-    - Filename: {os.path.basename(input_file)}
-    - Analysis Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-    - Analysis Status: Limited or Incomplete
-
-    ### Dataset Insights
-    - Total Rows: {len(self.df) if hasattr(self, 'df') else 'N/A'}
-    - Total Columns: {len(self.df.columns) if hasattr(self, 'df') else 'N/A'}
-
-    ### Potential Reasons for Limited Analysis
-    - Insufficient data
-    - Incompatible file format
-    - Unexpected data structure
-
-    Please review the original CSV file and ensure it meets the analysis requirements.
-    """
-
-            # Comprehensive analysis results dictionary
-            analysis_results = {
-                'input_file': input_file,
-                'timestamp': datetime.now().isoformat(),
-                'total_rows': 0,
-                'total_columns': 0,
-                'analysis_status': 'Incomplete'
-            }
-
-            # Data Structure Analysis
-            try:
-                data_insights = self.analyze_data_structure()
-                analysis_results.update(data_insights)
-                analysis_results['total_rows'] = len(self.df)
-                analysis_results['total_columns'] = len(self.df.columns)
-                print("✅ Data Structure Analyzed")
-            except Exception as structure_error:
-                print(f"❌ Data Structure Analysis Failed: {structure_error}")
-                analysis_results['structure_analysis_error'] = str(structure_error)
-
-            # Visualization Generation
-            try:
-                self.generate_visualizations()
-                analysis_results['visualizations_status'] = 'Generated'
-                print("🖼️ Visualizations Generated")
-            except Exception as viz_error:
-                print(f"⚠️ Visualization Generation Failed: {viz_error}")
-                analysis_results['visualizations_error'] = str(viz_error)
-
-            # Advanced Analysis
-            try:
-                advanced_insights = self.perform_advanced_analysis(analysis_results)
-                analysis_results.update(advanced_insights)
-                print("🔬 Advanced Analysis Completed")
-            except Exception as advanced_error:
-                print(f"❌ Advanced Analysis Failed: {advanced_error}")
-                analysis_results['advanced_analysis_error'] = str(advanced_error)
-
-            # Narrative Generation
-            try:
-                narrative = self.generate_story()
-                if not narrative:
-                    narrative = fallback_readme_content
-                analysis_results['narrative_generated'] = True
-                print("📖 Narrative Generated")
-            except Exception as narrative_error:
-                print(f"⚠️ Narrative Generation Failed: {narrative_error}")
-                narrative = fallback_readme_content
-                analysis_results['narrative_error'] = str(narrative_error)
-
-            # README Generation
-            try:
-                self.generate_readme(narrative)
-
-                # Copy README to eval folder
-                readme_in_analysis_dir = os.path.join(self.output_dir, 'README.md')
-
-                if os.path.exists(readme_in_analysis_dir):
-                    shutil.copy(readme_in_analysis_dir, eval_readme_path)
-                    print(f"📄 README copied to: {eval_readme_path}")
-                else:
-                    # Create fallback README
-                    with open(eval_readme_path, 'w') as f:
-                        f.write(fallback_readme_content)
-                    print(f"📄 Fallback README created at: {eval_readme_path}")
-
-                analysis_results['readme_status'] = 'Generated'
-            except Exception as readme_error:
-                print(f"❌ README Generation Failed: {readme_error}")
-                # Ensure a README is always created
-                with open(eval_readme_path, 'w') as f:
-                    f.write(fallback_readme_content)
-                print(f"📄 Minimal README created at: {eval_readme_path}")
-                analysis_results['readme_error'] = str(readme_error)
-
-            # Final Analysis Status
-            analysis_results['analysis_status'] = 'Completed'
-            analysis_results['total_analysis_time'] = time.time() - start_time
-
-            print(f"✅ Analysis Completed in {analysis_results['total_analysis_time']:.2f} seconds")
-            return analysis_results
-
-        except Exception as e:
-            print(f"❌ Comprehensive Analysis Failed: {e}")
-            import traceback
-            traceback.print_exc()
-
-            # Create a fallback README
-            try:
-                eval_folder = os.path.join(os.path.dirname(input_file), 'eval')
-                os.makedirs(eval_folder, exist_ok=True)
-                eval_readme_path = os.path.join(
-                    eval_folder,
-                    os.path.basename(input_file).replace('.csv', '_README.md')
-                )
-
-                with open(eval_readme_path, 'w') as f:
-                    f.write(f"""# Analysis Failed for {os.path.basename(input_file)}
-
-    ## Error Details
-    {str(e)}
-
-    Analysis could not be completed due to an unexpected error.
-    """)
-            except Exception as fallback_error:
-                print(f"❌ Failed to create fallback README: {fallback_error}")
-
-            return {
-                'input_file': input_file,
-                'error': str(e),
-                'total_rows': 0,
-                'total_columns': 0,
-                'analysis_status': 'Failed',
-                'timestamp': datetime.now().isoformat()
-            }
-
-    def query_llm_with_function_calling(self, analysis_details: Dict[str, Any]) -> str:
-        """
-        Enhanced LLM query with function calling
-
-        Args:
-            analysis_details (Dict): Analyzed data details
-
-        Returns:
-            str: LLM generated narrative
-        """
-        headers = {
-            "Authorization": f"Bearer {self.api_token}",
-            "Content-Type": "application/json"
-        }
-        url = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
-
-        data = {
-            "model": "gpt-4o-mini",
-            "messages": [
-                {"role": "user", "content": json.dumps(analysis_details)},
-                {"role": "system", "content": "Suggest appropriate analysis functions based on the dataset."}
-            ],
-            "functions": self.get_analysis_functions(),
-            "function_call": "auto",
-            "max_tokens": 1000
-        }
-
-        try:
-            response = httpx.post(url, json=data, headers=headers, timeout=30.0)
-            response.raise_for_status()
-
-            # Extract function call and generate narrative
-            response_data = response.json()
-            function_call = response_data.get('choices', [{}])[0].get('function_call', {})
-
-            if function_call:
-                # Process function suggestion
-                suggested_function = function_call.get('name', '')
-                suggested_params = json.loads(function_call.get('arguments', '{}'))
-
-                # Call the suggested function with parameters
-                if suggested_function == "perform_correlation_analysis":
-                    return self.perform_correlation_analysis(**suggested_params)
-                elif suggested_function == "detect_outliers":
-                    return self.detect_outliers(**suggested_params)
-
-            return response_data['choices'][0]['message']['content']
-        except Exception as e:
-            return f"Function calling failed: {str(e)}"
-
-    def get_analysis_functions(self) -> List[Dict]:
-        """
-        Dynamically generate function suggestions based on dataset
-
-        Returns:
-            List of function suggestions
-        """
-        functions = [
-            {
-                "name": "perform_correlation_analysis",
-                "description": "Analyze correlations between numeric columns",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "columns": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": "Numeric columns to analyze correlations"
-                        }
-                    }
-                }
-            },
-            {
-                "name": "detect_outliers",
-                "description": "Identify outliers in numeric columns",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "method": {
-                            "type": "string",
-                            "enum": ["IQR", "Z-Score", "Modified Z-Score"],
-                            "description": "Outlier detection method"
-                        }
-                    }
-                }
-            }
-        ]
-        return functions
-
-    def optimize_data_for_llm(self, max_rows=100):
-        """
-        Prepare a representative sample of data for LLM analysis
-
-        Args:
-            max_rows (int): Maximum number of rows to send
-
-        Returns:
-            pd.DataFrame: Optimized dataset
-        """
-        if len(self.df) > max_rows:
-            return self.df.sample(max_rows)
-        return self.df
-
     def run_analysis(self):
         """
         Orchestrate the entire data analysis workflow with dynamic function calling
@@ -1362,6 +738,7 @@ class DataAnalyzer:
 
             narrative = self.generate_story() or self._generate_fallback_narrative()
             print("📖 Narrative Generated")
+
             # Get image paths for analysis
             image_paths = [
                 os.path.join(self.output_dir, 'numeric_distributions.png'),
@@ -1458,6 +835,30 @@ def main():
                 'results': results
             })
 
+            # Move README.md and PNG files to the eval directory
+            eval_folder = os.path.join(os.path.dirname(csv_file), 'eval')
+            os.makedirs(eval_folder, exist_ok=True)
+
+            # Create a subdirectory based on the file name
+            eval_subdir = os.path.join(eval_folder, os.path.basename(csv_file).replace('.csv', ''))
+            os.makedirs(eval_subdir, exist_ok=True)
+
+            # Move README.md
+            readme_src = os.path.join(analyzer.output_dir, 'README.md')
+            readme_dest = os.path.join(eval_subdir, 'README.md')
+            shutil.move(readme_src, readme_dest)
+
+            # Move PNG files
+            png_files = [
+                os.path.join(analyzer.output_dir, 'numeric_distributions.png'),
+                os.path.join(analyzer.output_dir, 'correlation_heatmap.png'),
+                os.path.join(analyzer.output_dir, 'clustering_analysis.png'),
+                os.path.join(analyzer.output_dir, 'pca_variance.png')
+            ]
+            for png_file in png_files:
+                if os.path.exists(png_file):
+                    shutil.move(png_file, os.path.join(eval_subdir, os.path.basename(png_file)))
+
         except Exception as e:
             print(f"❌ Error analyzing {csv_file}: {e}")
             import traceback
@@ -1479,35 +880,5 @@ def main():
 
     return overall_results
 
-def append_all_folders_and_subfolders(cwd):
-    """
-    Append all folders and subfolders created in the current working directory to a list.
-
-    Args:
-        cwd (str): The current working directory.
-
-    Returns:
-        List[str]: A list of all folders and subfolders in the current working directory.
-    """
-    all_folders = []
-
-    # Walk through the directory
-    for foldername, subfolders, filenames in os.walk(cwd):
-        all_folders.append(foldername)
-
-    return all_folders
-
 if __name__ == "__main__":
-    # Get the current working directory
-    current_working_directory = os.getcwd()
-
-    # Append all folders and subfolders to a list
-    all_folders_and_subfolders = append_all_folders_and_subfolders(current_working_directory)
-
-    # Print the list of all folders and subfolders
-    print("All folders and subfolders in the current working directory:")
-    for folder in all_folders_and_subfolders:
-        print(folder)
-
-    # Run the main function
     main()
